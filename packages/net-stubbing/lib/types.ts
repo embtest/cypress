@@ -1,3 +1,3 @@
-export * from './external-types'
+export './external-types'
 
 export * from './internal-types'

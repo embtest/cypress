@@ -9,6 +9,7 @@
 
 /// <reference path="./cy-blob-util.d.ts" />
 /// <reference path="./cy-bluebird.d.ts" />
+/// <reference path="./cy-moment.d.ts" />
 /// <reference path="./cy-minimatch.d.ts" />
 /// <reference path="./cy-chai.d.ts" />
 /// <reference path="./lodash/index.d.ts" />
@@ -26,7 +27,7 @@
 // hmm, how to load it better?
 /// <reference path="./cypress-npm-api.d.ts" />
 
-/// <reference path="./net-stubbing.ts" />
+/// <reference path="./net-stubbing.d.ts" />
 /// <reference path="./cypress.d.ts" />
 /// <reference path="./cypress-global-vars.d.ts" />
 /// <reference path="./cypress-type-helpers.d.ts" />
