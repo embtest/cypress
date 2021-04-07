@@ -81,19 +81,24 @@ const StripUnsupportedAcceptEncoding: RequestMiddleware = function () {
   this.next()
 }
 
-function reqNeedsBasicAuthHeaders (req, { auth, origin }: CyServer.RemoteState) {
+function reqNeedsAuthHeaders (req, { auth, origin }: CyServer.RemoteState) {
   //if we have auth headers, this request matches our origin, protection space, and the user has not supplied auth headers
   return auth && !req.headers['authorization'] && cors.urlMatchesOriginProtectionSpace(req.proxiedUrl, origin)
 }
 
-const MaybeSetBasicAuthHeaders: RequestMiddleware = function () {
+const MaybeSetAuthHeaders: RequestMiddleware = function () {
   const remoteState = this.getRemoteState()
 
-  if (remoteState.auth && reqNeedsBasicAuthHeaders(this.req, remoteState)) {
+  if (remoteState.auth && reqNeedsAuthHeaders(this.req, remoteState)) {
     const { auth } = remoteState
-    const base64 = Buffer.from(`${auth.username}:${auth.password}`).toString('base64')
 
-    this.req.headers['authorization'] = `Basic ${base64}`
+    if (auth.username && auth.password) {
+      const base64 = Buffer.from(`${auth.username}:${auth.password}`).toString('base64')
+
+      this.req.headers['authorization'] = `Basic ${base64}`
+    } else if (auth.bearer) {
+      this.req.headers['authorization'] = `Bearer ${auth.bearer}`
+    }
   }
 
   this.next()
@@ -146,6 +151,6 @@ export default {
   RedirectToClientRouteIfUnloaded,
   EndRequestsToBlockedHosts,
   StripUnsupportedAcceptEncoding,
-  MaybeSetBasicAuthHeaders,
+  MaybeSetAuthHeaders,
   SendRequestOutgoing,
 }

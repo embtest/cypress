@@ -33,6 +33,12 @@ cy.visit('https://www.acme.com/', {
   }
 })
 
+cy.visit('https://www.acme.com/', {
+  auth: {
+    bearer: "abc123"
+  }
+})
+
 const serverOptions: Partial<Cypress.ServerOptions> = {
   delay: 100,
   ignore: () => true
@@ -87,8 +93,7 @@ cy.request({
 }).then((resp) => {
   resp // $ExpectType Response
   resp.redirectedToUrl // $ExpectType string | undefined
-  resp.redirects // $ExpectType string[] | undefined
-  resp.headers // $ExpectType { [key: string]: string | string[]; }
+  resp.redirects // $ExpectTyep string[] | undefined
 })
 
 // specify query parameters
