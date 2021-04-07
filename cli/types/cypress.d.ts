@@ -113,7 +113,7 @@ declare namespace Cypress {
 
   /**
    * Spec type for the given test. "integration" is the default, but
-   * tests run using `open-ct` will be "component"
+   * tests run using experimentalComponentTesting will be "component"
    *
    * @see https://on.cypress.io/experiments
    */
@@ -177,6 +177,18 @@ declare namespace Cypress {
      * @see https://on.cypress.io/minimatch
      */
     minimatch: typeof Minimatch.minimatch
+    /**
+     * @deprecated Will be removed in a future version.
+     * Consider including your own datetime formatter in your tests.
+     *
+     * Cypress automatically includes moment.js and exposes it as Cypress.moment.
+     *
+     * @see https://on.cypress.io/moment
+     * @see http://momentjs.com/
+     * @example
+     *    const todaysDate = Cypress.moment().format("MMM DD, YYYY")
+     */
+    moment: Moment.MomentStatic
     /**
      * Cypress automatically includes Bluebird and exposes it as Cypress.Promise.
      *
@@ -1784,7 +1796,7 @@ declare namespace Cypress {
     /**
      * Run a task in Node via the plugins file.
      *
-     * @see https://on.cypress.io/api/task
+     * @see https://on.cypress.io/task
      */
     task<S = unknown>(event: string, arg?: any, options?: Partial<Loggable & Timeoutable>): Chainable<S>
 
@@ -1817,12 +1829,6 @@ declare namespace Cypress {
      *
      * @see https://on.cypress.io/then
      */
-    then<S extends HTMLElement>(fn: (this: ObjectLike, currentSubject: Subject) => S): Chainable<JQuery<S>>
-    /**
-     * Enables you to work with the subject yielded from the previous command / promise.
-     *
-     * @see https://on.cypress.io/then
-     */
     then<S extends object | any[] | string | number | boolean>(fn: (this: ObjectLike, currentSubject: Subject) => S): Chainable<S>
     /**
      * Enables you to work with the subject yielded from the previous command / promise.
@@ -1830,12 +1836,6 @@ declare namespace Cypress {
      * @see https://on.cypress.io/then
      */
     then<S>(fn: (this: ObjectLike, currentSubject: Subject) => S): ThenReturn<Subject, S>
-    /**
-     * Enables you to work with the subject yielded from the previous command / promise.
-     *
-     * @see https://on.cypress.io/then
-     */
-     then<S extends HTMLElement>(options: Partial<Timeoutable>, fn: (this: ObjectLike, currentSubject: Subject) => S): Chainable<JQuery<S>>
     /**
      * Enables you to work with the subject yielded from the previous command / promise.
      *
@@ -2523,11 +2523,6 @@ declare namespace Cypress {
      */
     pluginsFile: string | false
     /**
-     * The application under test cannot redirect more than this limit.
-     * @default 20
-     */
-    redirectionLimit: number
-    /**
      * If `nodeVersion === 'system'` and a `node` executable is found, this will be the full filesystem path to that executable.
      * @default null
      */
@@ -2652,6 +2647,12 @@ declare namespace Cypress {
      * @default {}
      */
     e2e: ResolvedConfigOptions
+
+    /**
+     * Time, in milliseconds, between in each keystroke. (Pass false or 0 to disable)
+     * @default 10
+     */
+     keystrokeDelay: number | false
   }
 
   /**
@@ -2680,6 +2681,10 @@ declare namespace Cypress {
      * Path to folder containing component test files.
      */
     componentFolder: string
+    /**
+     * Whether component testing is enabled.
+     */
+    experimentalComponentTesting: boolean
     /**
      * Hosts mappings to IP addresses.
      */
@@ -5204,7 +5209,7 @@ declare namespace Cypress {
    */
   interface Actions {
     /**
-     * Fires when an uncaught exception or unhandled rejection occurs in your application. If it's an unhandled rejection, the rejected promise will be the 3rd argument.
+     * Fires when an uncaught exception occurs in your application.
      * Cypress will fail the test when this fires.
      * Return `false` from this event and Cypress will not fail the test. Also useful for debugging purposes because the actual `error` instance is provided to you.
      * @see https://on.cypress.io/catalog-of-events#App-Events
@@ -5230,7 +5235,7 @@ declare namespace Cypress {
       })
     ```
      */
-    (action: 'uncaught:exception', fn: (error: Error, runnable: Mocha.Runnable, promise?: Promise<any>) => false | void): Cypress
+    (action: 'uncaught:exception', fn: (error: Error, runnable: Mocha.Runnable) => false | void): Cypress
     /**
      * Fires when your app calls the global `window.confirm()` method.
      * Cypress will auto accept confirmations. Return `false` from this event and the confirmation will be canceled.
@@ -5469,7 +5474,7 @@ declare namespace Cypress {
     allRequestResponses: any[]
     body: any
     duration: number
-    headers: { [key: string]: string | string[] }
+    headers: { [key: string]: string }
     isOkStatusCode: boolean
     redirects?: string[]
     redirectedToUrl?: string
