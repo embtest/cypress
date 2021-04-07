@@ -8,7 +8,7 @@ macBuildFilters: &macBuildFilters
     branches:
       only:
         - develop
-        - 7.0-release
+        - fix-next-version
         - include-electron-node-version
 
 defaults: &defaults
@@ -36,7 +36,8 @@ testBinaryFirefox: &testBinaryFirefox
     branches:
       only:
         - develop
-        - 7.0-release
+        - fix-circleci-example-repos-yarn-install
+        - fix-next-version
   requires:
     - create-build-artifacts
 
@@ -44,7 +45,7 @@ executors:
   # the Docker image with Cypress dependencies and Chrome browser
   cy-doc:
     docker:
-      - image: cypress/browsers:node14.16.0-chrome89-ff77
+      - image: cypress/browsers:node12.18.3-chrome83-ff77
     environment:
       PLATFORM: linux
 
@@ -58,7 +59,7 @@ executors:
   # Docker image with non-root "node" user
   non-root-docker-user:
     docker:
-      - image: cypress/browsers:node14.16.0-chrome89-ff77
+      - image: cypress/browsers:node12.18.3-chrome83-ff77
         user: node
     environment:
       PLATFORM: linux
@@ -69,7 +70,7 @@ executors:
   mac:
     macos:
       # Executor should have Node >= required version
-      xcode: "12.2.0"
+      xcode: "11.3.1"
     environment:
       PLATFORM: mac
 
@@ -474,16 +475,16 @@ commands:
                   git checkout pr-<<parameters.pull_request_id>>
                   git log -n 2
       - run:
-          # Install with yarn if yarn.lock present
+          # Install deps + Cypress binary with yarn if yarn.lock present
           command: |
-            [[ -f yarn.lock ]] && yarn || npm install
+            if [[ -f yarn.lock ]]; then
+              yarn --frozen-lockfile
+              CYPRESS_INSTALL_BINARY=~/cypress/cypress.zip yarn add -D ~/cypress/cypress.tgz
+            else 
+              CYPRESS_INSTALL_BINARY=~/cypress/cypress.zip npm install ~/cypress/cypress.tgz
+            fi
+            yarn cypress version
           working_directory: /tmp/<<parameters.repo>>
-      - run:
-          name: Install Cypress
-          working_directory: /tmp/<<parameters.repo>>
-          # force installing the freshly built binary
-          command: |
-            CYPRESS_INSTALL_BINARY=~/cypress/cypress.zip npm i ~/cypress/cypress.tgz
       - run:
           name: Print Cypress version
           working_directory: /tmp/<<parameters.repo>>
@@ -508,7 +509,7 @@ commands:
       - run:
           condition: <<parameters.wait-on>>
           name: "Waiting on server to boot: <<parameters.wait-on>>"
-          command: "npx wait-on <<parameters.wait-on>> --timeout 120000"
+          command: "npx wait-on <<parameters.wait-on>> --timeout 300000"
       - when:
           condition: <<parameters.folder>>
           steps:
@@ -1102,6 +1103,15 @@ jobs:
           path: /tmp/artifacts
       - store-npm-logs
 
+  run-launcher:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          command: node index.js
+          working_directory: packages/launcher
+
   npm-webpack-preprocessor:
     <<: *defaults
     steps:
@@ -1276,7 +1286,7 @@ jobs:
       - run:
           name: Check current branch to persist artifacts
           command: |
-            if [[ "$CIRCLE_BRANCH" != "develop" && "$CIRCLE_BRANCH" != "7.0-release" ]]; then
+            if [[ "$CIRCLE_BRANCH" != "develop" && "$CIRCLE_BRANCH" != "fix-next-version" ]]; then
               echo "Not uploading artifacts or posting install comment for this branch."
               circleci-agent step halt
             fi
@@ -1425,7 +1435,7 @@ jobs:
   test-npm-module-on-minimum-node-version:
     <<: *defaults
     docker:
-      - image: cypress/base:12.0.0-libgbm
+      - image: cypress/base:10.0.0
     steps:
       - attach_workspace:
           at: ~/
@@ -1677,8 +1687,9 @@ jobs:
       - test-binary-against-repo:
           repo: cypress-documentation
           browser: firefox
-          command: "npm run cypress:run"
-          wait-on: http://localhost:2222
+          command: "yarn cypress run"
+          wait-on: http://localhost:3000
+          server-start-command: yarn start:ci
 
   "test-binary-against-realworld-firefox":
     <<: *defaults
@@ -1837,15 +1848,16 @@ linux-workflow: &linux-workflow
     - ui-components-integration-tests:
         requires:
           - build
+    - run-launcher:
+        requires:
+          - build
 
     - npm-webpack-dev-server:
         requires:
           - build
-    # TODO: add this back when flake with vite-electron has been resolved
-    # See branch `fix-branch`
-    # - npm-vite-dev-server:
-    #     requires:
-    #       - build
+    - npm-vite-dev-server:
+        requires:
+          - build
     - npm-rollup-dev-server:
         requires:
           - build
@@ -1884,8 +1896,9 @@ linux-workflow: &linux-workflow
           - npm-webpack-batteries-included-preprocessor
           - npm-webpack-preprocessor
           - npm-rollup-dev-server
-          # - npm-vite-dev-server
+          - npm-vite-dev-server
           - npm-webpack-dev-server
+          - run-launcher
           - ui-components-integration-tests
           - reporter-integration-tests
           - Linux lint
@@ -1914,7 +1927,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - build
     - test-kitchensink:
@@ -1926,7 +1939,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - build
     - create-build-artifacts:
@@ -1976,7 +1989,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - create-build-artifacts
     - test-npm-module-and-verify-binary:
@@ -1984,7 +1997,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - create-build-artifacts
     - test-binary-against-staging:
@@ -1993,7 +2006,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - create-build-artifacts
 
@@ -2019,7 +2032,7 @@ linux-workflow: &linux-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - create-build-artifacts
 
@@ -2082,7 +2095,7 @@ mac-workflow: &mac-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - darwin-create-build-artifacts
 
@@ -2094,7 +2107,7 @@ mac-workflow: &mac-workflow
           branches:
             only:
               - develop
-              - 7.0-release
+              - fix-next-version
         requires:
           - darwin-create-build-artifacts
 
