@@ -1,0 +1,7 @@
+{
+  "video": false,
+  "testFiles": "**/*spec.{ts,tsx}",
+  "experimentalFetchPolyfill": true,
+  "componentFolder": "src",
+  "fixturesFolder": false
+}

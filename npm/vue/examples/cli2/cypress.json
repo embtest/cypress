@@ -1,0 +1,6 @@
+{
+  "testFiles": "**/*.spec.*",
+  "pluginsFile": "./plugins.js",
+  "componentFolder": "./src",
+  "componentSupportFile": "./component-helpers.js"
+}
