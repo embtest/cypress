@@ -33,6 +33,11 @@ const $TestConfigOverrides = require('../cy/testConfigOverrides')
 
 const { registerFetch } = require('unfetch')
 
+const privateProps = {
+  props: { name: 'state', url: true },
+  privates: { name: 'state', url: false },
+}
+
 const noArgsAreAFunction = (args) => {
   return !_.some(args, _.isFunction)
 }
@@ -147,7 +152,7 @@ const create = function (specWindow, Cypress, Cookies, state, config, log) {
   const jquery = $jQuery.create(state)
   const location = $Location.create(state)
   const focused = $Focused.create(state)
-  const keyboard = $Keyboard.create(Cypress, state)
+  const keyboard = $Keyboard.create(state)
   const mouse = $Mouse.create(state, keyboard, focused, Cypress)
   const timers = $Timers.create()
 
@@ -991,7 +996,6 @@ const create = function (specWindow, Cypress, Cookies, state, config, log) {
         document: s.document,
         $autIframe: s.$autIframe,
         specWindow: s.specWindow,
-        activeSessions: s.activeSessions,
       }
 
       // reset state back to empty object
@@ -1103,9 +1107,8 @@ const create = function (specWindow, Cypress, Cookies, state, config, log) {
         // dont enqueue / inject any new commands if
         // onInjectCommand returns false
         const onInjectCommand = state('onInjectCommand')
-        const injected = _.isFunction(onInjectCommand)
 
-        if (injected) {
+        if (_.isFunction(onInjectCommand)) {
           if (onInjectCommand.call(cy, name, ...args) === false) {
             return
           }
@@ -1117,7 +1120,6 @@ const create = function (specWindow, Cypress, Cookies, state, config, log) {
           type,
           chainerId,
           userInvocationStack,
-          injected,
           fn: wrap(firstCall),
         })
 
@@ -1410,6 +1412,16 @@ const create = function (specWindow, Cypress, Cookies, state, config, log) {
         }
       }
     },
+  })
+
+  _.each(privateProps, (obj, key) => {
+    return Object.defineProperty(cy, key, {
+      get () {
+        return $errUtils.throwErrByPath('miscellaneous.private_property', {
+          args: obj,
+        })
+      },
+    })
   })
 
   setTopOnError(cy)

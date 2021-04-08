@@ -58,14 +58,12 @@ module.exports = (Commands, Cypress, cy, state) => {
       // return the remote local storage object
       return remote
     },
+    getLocalStorage (options) {
+      return Cypress.Session.getLocalStorage(options)
+    },
 
-    // TODO: add these user-facing APIs
-    // getLocalStorage (options) {
-    //   return Cypress.session.getLocalStorage(options)
-    // },
-
-    // setLocalStorage (options) {
-    //   return Cypress.session.setLocalStorage(options)
-    // },
+    setLocalStorage (options) {
+      return Cypress.Session.setLocalStorage(options)
+    },
   })
 }

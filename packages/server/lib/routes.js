@@ -40,13 +40,7 @@ module.exports = ({ app, config, getRemoteState, networkProxy, project, onError 
     res.send('<html><body><script>window.parent.postMessage({value: JSON.stringify(window.localStorage), type: "localStorage"}, "*")</script></body></html>')
   })
 
-  /* eslint-disable no-undef */
   app.get('/__cypress/automation/setLocalStorage', (req, res) => {
-    // const origin = req.host
-
-    const origin = req.originalUrl.slice(req.originalUrl.indexOf('?') + 1)
-
-    networkProxy.http.getRenderedHTMLOrigins()[origin] = true
     res.send(`<html><body><script>(${(function () {
       window.onmessage = function (event) {
         const data = event.data
@@ -69,7 +63,6 @@ module.exports = ({ app, config, getRemoteState, networkProxy, project, onError 
       window.parent.postMessage({ type: 'set:localStorage:load' }, '*')
     }).toString()})()</script></body></html>`)
   })
-  /* eslint-enable no-undef */
 
   app.get('/__cypress/static/*', (req, res) => {
     staticCtrl.handle(req, res)
@@ -84,7 +77,6 @@ module.exports = ({ app, config, getRemoteState, networkProxy, project, onError 
   app.get('/__cypress/iframes/*', (req, res) => {
     const extraOptions = {
       specFilter: _.get(project, 'spec.specFilter'),
-      specType: _.get(project, 'spec.specType', 'integration'),
     }
 
     debug('project %o', project)

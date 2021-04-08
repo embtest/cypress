@@ -40,12 +40,6 @@ type HttpMiddlewareCtx<T> = {
   deferSourceMapRewrite: (opts: { js: string, url: string }) => string
 } & T
 
-export const defaultMiddleware = {
-  [HttpStages.IncomingRequest]: RequestMiddleware,
-  [HttpStages.IncomingResponse]: ResponseMiddleware,
-  [HttpStages.Error]: ErrorMiddleware,
-}
-
 export type ServerCtx = Readonly<{
   config: CyServer.Config
   getFileServerToken: () => string
@@ -190,7 +184,7 @@ export class Http {
   netStubbingState: NetStubbingState
   request: any
   socket: CyServer.Socket
-  renderedHTMLOrigins: {[key: string]: boolean} = {}
+  originsRenderedHTML: {[key: string]: boolean} = {}
 
   constructor (opts: ServerCtx & { middleware?: HttpMiddlewareStacks }) {
     this.buffers = new HttpBuffers()
@@ -205,7 +199,11 @@ export class Http {
     this.request = opts.request
 
     if (typeof opts.middleware === 'undefined') {
-      this.middleware = defaultMiddleware
+      this.middleware = {
+        [HttpStages.IncomingRequest]: RequestMiddleware,
+        [HttpStages.IncomingResponse]: ResponseMiddleware,
+        [HttpStages.Error]: ErrorMiddleware,
+      }
     }
   }
 
@@ -213,6 +211,8 @@ export class Http {
     const ctx: HttpMiddlewareCtx<any> = {
       req,
       res,
+
+      getRenderedHTMLOrigins: this.getRenderedHTMLOrigins.bind(this),
       buffers: this.buffers,
       config: this.config,
       getFileServerToken: this.getFileServerToken,
@@ -227,7 +227,6 @@ export class Http {
           ...opts,
         })
       },
-      getRenderedHTMLOrigins: this.getRenderedHTMLOrigins,
     }
 
     return _runStage(HttpStages.IncomingRequest, ctx)
@@ -240,8 +239,8 @@ export class Http {
     })
   }
 
-  getRenderedHTMLOrigins = () => {
-    return this.renderedHTMLOrigins
+  getRenderedHTMLOrigins () {
+    return this.originsRenderedHTML
   }
 
   async handleSourceMapRequest (req: Request, res: Response) {
@@ -259,8 +258,7 @@ export class Http {
   }
 
   reset () {
-    // TODO: when to reset marked origins?
-    // this.renderedHTMLOrigins = {}
+    this.originsRenderedHTML = {}
     this.buffers.reset()
   }
 

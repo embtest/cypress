@@ -1,3 +1,4 @@
+import _ from 'lodash'
 import { CyCookie } from './browsers/cdp_automation'
 
 interface SessionData {
@@ -6,18 +7,21 @@ interface SessionData {
   localStorage: object
   sessionStorage: object
 }
+const sessions = {}
 const state = {
-  sessions: {},
+  stubbedDomainsForAutomation: null,
 }
+
+const defaultState = _.clone(state)
 
 export function saveSession (data: SessionData) {
   if (!data.name) throw new Error('session data had no name')
 
-  state.sessions[data.name] = data
+  sessions[data.name] = data
 }
 
 export function getSession (name: string): SessionData {
-  const session = state.sessions[name]
+  const session = sessions[name]
 
   if (!session) throw new Error(`session with name "${name}" not found`)
 
@@ -28,6 +32,6 @@ export function getState () {
   return state
 }
 
-export function clearSessions () {
-  state.sessions = {}
+export function resetState () {
+  _.assign(state, defaultState)
 }

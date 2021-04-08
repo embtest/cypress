@@ -16,7 +16,7 @@ const errors = require('./errors')
 const preprocessor = require('./plugins/preprocessor')
 const netStubbing = require('@packages/net-stubbing')
 const firefoxUtil = require('./browsers/firefox-util').default
-const studio = require('./studio')
+const session = require('./session')
 
 const runnerEvents = [
   'reporter:restart:test:run',
@@ -54,8 +54,6 @@ class Socket {
     this.ended = false
 
     this.onTestFileChange = this.onTestFileChange.bind(this)
-    this.onStudioTestFileChange = this.onStudioTestFileChange.bind(this)
-    this.removeOnStudioTestFileChange = this.removeOnStudioTestFileChange.bind(this)
 
     if (config.watchForFileChanges) {
       preprocessor.emitter.on('file:updated', this.onTestFileChange)
@@ -73,19 +71,7 @@ class Socket {
     })
   }
 
-  onStudioTestFileChange (filePath) {
-    // wait for the studio test file to be written to disk, then reload the test
-    // and remove the listener (since this handler is only invoked when watchForFileChanges is false)
-    return this.onTestFileChange(filePath).then(() => {
-      this.removeOnStudioTestFileChange()
-    })
-  }
-
-  removeOnStudioTestFileChange () {
-    return preprocessor.emitter.off('file:updated', this.onStudioTestFileChange)
-  }
-
-  watchTestFileByPath (config, specConfig) {
+  watchTestFileByPath (config, specConfig, options) {
     debug('watching spec with config %o', specConfig)
 
     const cleanIntegrationPrefix = (s) => {
@@ -315,7 +301,7 @@ class Socket {
       socket.on('watch:test:file', (specInfo, cb = function () { }) => {
         debug('watch:test:file %o', specInfo)
 
-        this.watchTestFileByPath(config, specInfo)
+        this.watchTestFileByPath(config, specInfo, options)
 
         // callback is only for testing purposes
         return cb()
@@ -325,10 +311,10 @@ class Socket {
         return options.onConnect(socketId, socket)
       })
 
-      socket.on('set:runnables', async (runnables, cb) => {
-        const res = await options.onSetRunnables(runnables)
+      socket.on('set:runnables', (runnables, cb) => {
+        options.onSetRunnables(runnables)
 
-        return cb(res)
+        return cb()
       })
 
       socket.on('mocha', (...args) => {
@@ -423,6 +409,12 @@ class Socket {
               return exec.run(config.projectRoot, args[0])
             case 'task':
               return task.run(config.pluginsFile, args[0])
+            case 'save:session':
+              return session.saveSession(args[0])
+            case 'get:session':
+              return session.getSession(args[0])
+            case 'get:fetchedHTMLOrigins':
+              return options.getRenderedHTMLOrigins()
             default:
               throw new Error(
                 `You requested a backend event we cannot handle: ${eventName}`,
@@ -478,28 +470,6 @@ class Socket {
 
       socket.on('open:file', (fileDetails) => {
         openFile(fileDetails)
-      })
-
-      socket.on('studio:init', (cb) => {
-        studio.getStudioModalShown()
-        .then(cb)
-      })
-
-      socket.on('studio:save', (saveInfo, cb) => {
-        // even if the user has turned off file watching
-        // we want to force a reload on save
-        if (!config.watchForFileChanges) {
-          preprocessor.emitter.on('file:updated', this.onStudioTestFileChange)
-        }
-
-        studio.save(saveInfo)
-        .then((success) => {
-          cb(success)
-
-          if (!success && !config.watchForFileChanges) {
-            this.removeOnStudioTestFileChange()
-          }
-        })
       })
 
       reporterEvents.forEach((event) => {

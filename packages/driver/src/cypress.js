@@ -24,9 +24,9 @@ const $LocalStorage = require('./cypress/local_storage')
 const $Mocha = require('./cypress/mocha')
 const $Mouse = require('./cy/mouse')
 const $Runner = require('./cypress/runner')
-const $Downloads = require('./cypress/downloads')
 const $Server = require('./cypress/server')
 const $Screenshot = require('./cypress/screenshot')
+const $Session = require('./cypress/session')
 const $SelectorPlayground = require('./cypress/selector_playground')
 const $utils = require('./cypress/utils')
 const $errUtils = require('./cypress/error_utils')
@@ -43,6 +43,34 @@ const jqueryProxyFn = function (...args) {
   return this.cy.$$.apply(this.cy, args)
 }
 
+// provide the old interface and
+// throw a deprecation message
+$Log.command = () => {
+  return $errUtils.throwErrByPath('miscellaneous.command_log_renamed')
+}
+
+const throwDeprecatedCommandInterface = (key = 'commandName', method) => {
+  let signature = ''
+
+  switch (method) {
+    case 'addParentCommand':
+      signature = `'${key}', function(){...}`
+      break
+    case 'addChildCommand':
+      signature = `'${key}', { prevSubject: true }, function(){...}`
+      break
+    case 'addDualCommand':
+      signature = `'${key}', { prevSubject: 'optional' }, function(){...}`
+      break
+    default:
+      break
+  }
+
+  $errUtils.throwErrByPath('miscellaneous.custom_command_interface_changed', {
+    args: { method, signature },
+  })
+}
+
 const throwPrivateCommandInterface = (method) => {
   $errUtils.throwErrByPath('miscellaneous.private_custom_command_interface', {
     args: { method },
@@ -55,7 +83,6 @@ class $Cypress {
     this.chai = null
     this.mocha = null
     this.runner = null
-    this.downloads = null
     this.Commands = null
     this.$autIframe = null
     this.onSpecReady = null
@@ -134,7 +161,6 @@ class $Cypress {
     _.extend(this, browserInfo(config))
 
     this.state = $SetterGetter.create({})
-    this.originalConfig = _.cloneDeep(config)
     this.config = $SetterGetter.create(config)
     this.env = $SetterGetter.create(env)
     this.getFirefoxGcInterval = $FirefoxForcedGc.createIntervalGetter(this)
@@ -160,10 +186,6 @@ class $Cypress {
   initialize ({ $autIframe, onSpecReady }) {
     this.$autIframe = $autIframe
     this.onSpecReady = onSpecReady
-    if (this._onInitialize) {
-      this._onInitialize()
-      this._onInitialize = undefined
-    }
   }
 
   run (fn) {
@@ -172,21 +194,6 @@ class $Cypress {
     }
 
     return this.runner.run(fn)
-  }
-
-  // Method to manually re-execute Runner (usually within $autIframe)
-  // used mainly by Component Testing
-  restartRunner () {
-    if (!window.top.Cypress) {
-      throw Error('Cannot re-run spec without Cypress')
-    }
-
-    // MobX state is only available on the Runner instance
-    // which is attached to the top level `window`
-    // We avoid infinite restart loop by checking if not in a loading state.
-    if (!window.top.Runner.state.isLoading) {
-      window.top.Runner.emit('restart')
-    }
   }
 
   // onSpecWindow is called as the spec window
@@ -206,10 +213,10 @@ class $Cypress {
     this.log = $Log.create(this, this.cy, this.state, this.config)
     this.mocha = $Mocha.create(specWindow, this, this.config)
     this.runner = $Runner.create(specWindow, this.mocha, this, this.cy)
-    this.downloads = $Downloads.create(this)
 
     // wire up command create to cy
     this.Commands = $Commands.create(this, this.cy, this.state, this.config)
+    this.Session = $Session.create(this, this.state)
 
     this.events.proxyTo(this.cy)
 
@@ -220,17 +227,6 @@ class $Cypress {
       err = $errUtils.createUncaughtException('spec', err)
 
       this.runner.onScriptError(err)
-    })
-    .then(() => {
-      return (new Promise((resolve) => {
-        if (this.$autIframe) {
-          resolve()
-        } else {
-          // block initialization if the iframe has not been created yet
-          // Used in CT when async chunks for plugins take their time to download/parse
-          this._onInitialize = resolve
-        }
-      }))
     })
     .then(() => {
       this.cy.initialize(this.$autIframe)
@@ -445,9 +441,6 @@ class $Cypress {
       case 'cy:visit:failed':
         return this.emit('visit:failed', args[0])
 
-      case 'cy:visit:blank':
-        return this.emitThen('visit:blank', args[0])
-
       case 'cy:viewport:changed':
         return this.emit('viewport:changed', ...args)
 
@@ -587,6 +580,18 @@ class $Cypress {
     return this.action('cypress:stop')
   }
 
+  addChildCommand (key) {
+    return throwDeprecatedCommandInterface(key, 'addChildCommand')
+  }
+
+  addParentCommand (key) {
+    return throwDeprecatedCommandInterface(key, 'addParentCommand')
+  }
+
+  addDualCommand (key) {
+    return throwDeprecatedCommandInterface(key, 'addDualCommand')
+  }
+
   addAssertionCommand () {
     return throwPrivateCommandInterface('addAssertionCommand')
   }
@@ -598,28 +603,6 @@ class $Cypress {
   static create (config) {
     return new $Cypress(config)
   }
-}
-
-function wrapMoment (moment) {
-  function deprecatedFunction (...args) {
-    $errUtils.warnByPath('moment.deprecated')
-
-    return moment.apply(moment, args)
-  }
-  // copy all existing properties from "moment" like "moment.duration"
-  _.keys(moment).forEach((key) => {
-    const value = moment[key]
-
-    if (_.isFunction(value)) {
-      // recursively wrap any property that can be called by the user
-      // so that Cypress.moment.duration() shows deprecated message
-      deprecatedFunction[key] = wrapMoment(value)
-    } else {
-      deprecatedFunction[key] = value
-    }
-  })
-
-  return deprecatedFunction
 }
 
 // attach to $Cypress to access
@@ -647,7 +630,7 @@ $Cypress.prototype.Screenshot = $Screenshot
 $Cypress.prototype.SelectorPlayground = $SelectorPlayground
 $Cypress.prototype.utils = $utils
 $Cypress.prototype._ = _
-$Cypress.prototype.moment = wrapMoment(moment)
+$Cypress.prototype.moment = moment
 $Cypress.prototype.Blob = blobUtil
 $Cypress.prototype.Promise = Promise
 $Cypress.prototype.minimatch = minimatch
