@@ -5,7 +5,7 @@ const minimatch = require('minimatch')
 const moment = require('moment')
 const Promise = require('bluebird')
 const sinon = require('sinon')
-const fakeTimers = require('@sinonjs/fake-timers')
+const lolex = require('lolex')
 
 const $dom = require('./dom')
 const $errorMessages = require('./cypress/error_messages')
@@ -445,6 +445,9 @@ class $Cypress {
       case 'cy:visit:failed':
         return this.emit('visit:failed', args[0])
 
+      case 'cy:visit:blank':
+        return this.emitThen('visit:blank', args[0])
+
       case 'cy:viewport:changed':
         return this.emit('viewport:changed', ...args)
 
@@ -649,7 +652,7 @@ $Cypress.prototype.Blob = blobUtil
 $Cypress.prototype.Promise = Promise
 $Cypress.prototype.minimatch = minimatch
 $Cypress.prototype.sinon = sinon
-$Cypress.prototype.fakeTimers = fakeTimers
+$Cypress.prototype.lolex = lolex
 
 // attaching these so they are accessible
 // via the runner + integration spec helper

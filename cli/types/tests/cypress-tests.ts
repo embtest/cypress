@@ -5,6 +5,14 @@ namespace CypressLodashTests {
   })
 }
 
+namespace CypressMomentTests {
+  Cypress.moment() // $ExpectType Moment
+  Cypress.moment('1982-08-23') // $ExpectType Moment
+  Cypress.moment(Date()) // $ExpectType Moment
+  Cypress.moment(Date()).format() // $ExpectType string
+  Cypress.moment().startOf('week') // $ExpectType Moment
+}
+
 namespace CypressSinonTests {
   Cypress.sinon // $ExpectType SinonStatic
 
@@ -228,26 +236,6 @@ describe('then', () => {
         s // $ExpectType string
       })
   })
-
-  it('HTMLElement', () => {
-    cy.get('div')
-    .then(($div) => {
-      $div // $ExpectType JQuery<HTMLDivElement>
-      return $div[0]
-    })
-    .then(($div) => {
-      $div // $ExpectType JQuery<HTMLDivElement>
-    })
-
-    cy.get('p')
-    .then(($p) => {
-      $p // $ExpectType JQuery<HTMLParagraphElement>
-      return $p[0]
-    })
-    .then({timeout: 3000}, ($p) => {
-      $p // $ExpectType JQuery<HTMLParagraphElement>
-    })
-  })
 })
 
 cy.wait(['@foo', '@bar'])
@@ -346,16 +334,14 @@ namespace CypressAUTWindowTests {
 }
 
 namespace CypressOnTests {
-  Cypress.on('uncaught:exception', (error, runnable, promise) => {
+  Cypress.on('uncaught:exception', (error, runnable) => {
     error // $ExpectType Error
     runnable // $ExpectType Runnable
-    promise // $ExpectType Promise<any> | undefined
   })
 
-  cy.on('uncaught:exception', (error, runnable, promise) => {
+  cy.on('uncaught:exception', (error, runnable) => {
     error // $ExpectType Error
     runnable // $ExpectType Runnable
-    promise // $ExpectType Promise<any> | undefined
   })
 
   // you can chain multiple callbacks
@@ -662,4 +648,45 @@ namespace CypressTaskTests {
   cy.task('foo').then((val) => {
     val // $ExpectType unknown
   })
+}
+
+namespace CypressSessionsTests {
+  cy.useSession('user')
+  cy.useSession(cy.defineSession({ name: 'user', steps: () => {} }))
+
+  cy.useSession() // $ExpectError
+
+  cy.defineSession('user', () => {})
+  cy.defineSession('user', () => {}, { after: () => {}, before: () => {}, validate: () => {} })
+  cy.defineSession('user', () => {}, { before: () => {} })
+  cy.defineSession({ name: 'user', steps: () => {} })
+
+  cy.defineSession('user') // $ExpectError
+  cy.defineSession({}) // $ExpectError
+  cy.defineSession({ name: 'user' }) // $ExpectError
+}
+
+namespace CypressCookieTests {
+  cy.getCookie('foo') // $ExpectType Chainable<Cookie | null>
+
+  cy.setCookie('foo', 'val', { // $ExpectType Chainable<Cookie>
+    log: false,
+    domain: 'example.com',
+    expiry: 123,
+    secure: true,
+    sameSite: 'no_restriction',
+    foo: true, // $ExpectError
+  })
+
+  const cookie: Cypress.Cookie = {} as unknown as Cypress.Cookie
+
+  cookie.domain
+  cookie.expiry
+  cookie.httpOnly
+  cookie.name
+  cookie.path
+  cookie.sameSite
+  cookie.secure
+  cookie.value
+  cookie.foo // $ExpectError
 }

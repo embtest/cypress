@@ -5,6 +5,7 @@ import runnablesStore, { RunnablesStore, RootRunnable, LogProps } from '../runna
 import statsStore, { StatsStore, StatsStoreStartInfo } from '../header/stats-store'
 import scroller, { Scroller } from './scroller'
 import TestModel, { UpdatableTestProps, UpdateTestCallback, TestProps } from '../test/test-model'
+import { SessionProps } from '../sessions/sessions-model'
 
 const localBus = new EventEmitter()
 
@@ -72,6 +73,10 @@ const events: Events = {
       runnablesStore.updateLog(log)
     }))
 
+    runner.on('session:add', action('session:add', (props: SessionProps) => {
+      runnablesStore._withTest(props.testId, (test) => test.addSession(props))
+    }))
+
     runner.on('reporter:log:remove', action('log:remove', (log: LogProps) => {
       runnablesStore.removeLog(log)
     }))
@@ -105,9 +110,7 @@ const events: Events = {
 
     runner.on('test:after:run', action('test:after:run', (runnable: TestProps) => {
       runnablesStore.runnableFinished(runnable)
-      if (runnable.final) {
-        if (runnable.muted || appState.studioActive) return
-
+      if (runnable.final && !appState.studioActive) {
         statsStore.incrementCount(runnable.state!)
       }
     }))
@@ -201,6 +204,10 @@ const events: Events = {
 
     localBus.on('get:user:editor', (cb) => {
       runner.emit('get:user:editor', cb)
+    })
+
+    localBus.on('clear:session', (cb) => {
+      runner.emit('clear:session', cb)
     })
 
     localBus.on('set:user:editor', (editor) => {

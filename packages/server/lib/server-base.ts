@@ -11,12 +11,14 @@ import { AddressInfo } from 'net'
 import url from 'url'
 import httpsProxy from '@packages/https-proxy'
 import { netStubbingState, NetStubbingState } from '@packages/net-stubbing'
-import { agent, cors, httpUtils, uri } from '@packages/network'
+import { agent, cors, uri } from '@packages/network'
 import { NetworkProxy } from '@packages/proxy'
 import { SocketCt } from '@packages/server-ct'
 import errors from './errors'
 import logger from './logger'
 import Request from './request'
+import * as session from './session'
+
 import { SocketE2E } from './socket-e2e'
 import templateEngine from './template_engine'
 import { ensureProp } from './util/class-helpers'
@@ -217,10 +219,12 @@ export class ServerBase<TSocket extends SocketE2E | SocketCt> {
   startWebsockets (automation, config, options: Record<string, unknown> = {}) {
     options.onRequest = this._onRequest.bind(this)
     options.netStubbingState = this.netStubbingState
+    options.getRenderedHTMLOrigins = this._networkProxy?.http.getRenderedHTMLOrigins
 
     options.onResetServerState = () => {
       this.networkProxy.reset()
       this.netStubbingState.reset()
+      session.clearSessions()
     }
 
     const io = this.socket.startListening(this.server, automation, config, options)
@@ -237,7 +241,7 @@ export class ServerBase<TSocket extends SocketE2E | SocketCt> {
   }
 
   _createHttpServer (app): DestroyableHttpServer {
-    const svr = http.createServer(httpUtils.lenientOptions, app)
+    const svr = http.createServer(app)
 
     allowDestroy(svr)
 
@@ -433,17 +437,17 @@ export class ServerBase<TSocket extends SocketE2E | SocketCt> {
   }
 
   _close () {
-    // bail early we dont have a server or we're not
-    // currently listening
-    if (!this._server || !this.isListening) {
-      return Bluebird.resolve(true)
-    }
-
     this.reset()
 
     logger.unsetSettings()
 
     evilDns.clear()
+
+    // bail early we dont have a server or we're not
+    // currently listening
+    if (!this._server || !this.isListening) {
+      return Bluebird.resolve()
+    }
 
     return this._server.destroyAsync()
     .then(() => {
@@ -452,16 +456,14 @@ export class ServerBase<TSocket extends SocketE2E | SocketCt> {
   }
 
   close () {
-    return Bluebird.all([
+    return Bluebird.join(
       this._close(),
       this._socket?.close(),
       this._fileServer?.close(),
       this._httpsProxy?.close(),
-    ])
-    .then((res) => {
+    )
+    .then(() => {
       this._middleware = null
-
-      return res
     })
   }
 

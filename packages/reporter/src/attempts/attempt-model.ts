@@ -10,16 +10,17 @@ import Hook, { HookName } from '../hooks/hook-model'
 import { FileDetails } from '@packages/ui-components'
 import { LogProps } from '../runnables/runnables-store'
 import Log from '../instruments/instrument-model'
+import Session, { SessionProps } from '../sessions/sessions-model'
 
 export default class Attempt {
   @observable agents: Agent[] = []
+  @observable sessions: Record<string, Session> = {}
   @observable commands: Command[] = []
   @observable err = new Err({})
   @observable hooks: Hook[] = []
   // TODO: make this an enum with states: 'QUEUED, ACTIVE, INACTIVE'
   @observable isActive: boolean | null = null
   @observable routes: Route[] = []
-  @observable muted: TestProps['muted']
   @observable _state?: TestState | null = null
   @observable _invocationCount: number = 0
   @observable invocationDetails?: FileDetails
@@ -47,7 +48,6 @@ export default class Attempt {
     this.id = props.currentRetry || 0
     this.test = test
     this._state = props.state
-    this.muted = props.muted
     this.err.update(props.err)
 
     this.invocationDetails = props.invocationDetails
@@ -111,15 +111,11 @@ export default class Attempt {
     }
   }
 
-  @action updateLog (props: LogProps) {
+  updateLog (props: LogProps) {
     const log = this._logs[props.id]
 
     if (log) {
       log.update(props)
-
-      if (log.state === 'failed') {
-        this._state = 'failed'
-      }
     }
   }
 
@@ -152,10 +148,6 @@ export default class Attempt {
       this._state = props.state
     }
 
-    if (props.muted) {
-      this.muted = props.muted
-    }
-
     this.err.update(props.err)
 
     if (props.failedFromHookId) {
@@ -183,6 +175,12 @@ export default class Attempt {
     this.agents.push(agent)
 
     return agent
+  }
+
+  _addSession (props: SessionProps) {
+    const session = new Session(props)
+
+    this.sessions[props.sessionInfo.name] = session
   }
 
   _addRoute (props: RouteProps) {

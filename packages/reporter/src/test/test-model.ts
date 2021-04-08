@@ -10,6 +10,7 @@ import { CommandProps } from '../commands/command-model'
 import { AgentProps } from '../agents/agent-model'
 import { RouteProps } from '../routes/route-model'
 import { RunnablesStore, LogProps } from '../runnables/runnables-store'
+import { SessionProps } from '../sessions/sessions-model'
 
 export type TestState = 'active' | 'failed' | 'pending' | 'passed' | 'processing'
 
@@ -28,7 +29,6 @@ export interface TestProps extends RunnableProps {
   retries?: number
   final?: boolean
   invocationDetails?: FileDetails
-  muted?: boolean
 }
 
 export interface UpdatableTestProps {
@@ -40,7 +40,6 @@ export interface UpdatableTestProps {
   isOpen?: TestProps['isOpen']
   currentRetry?: TestProps['currentRetry']
   retries?: TestProps['retries']
-  muted?: TestProps['muted']
 }
 
 export default class Test extends Runnable {
@@ -137,6 +136,10 @@ export default class Test extends Runnable {
     })
   }
 
+  addSession (props: SessionProps) {
+    return this._withAttempt(props.testCurrentRetry, (attempt) => attempt._addSession(props))
+  }
+
   updateLog (props: LogProps) {
     this._withAttempt(props.testCurrentRetry || this.currentRetry, (attempt: Attempt) => {
       attempt.updateLog(props)
@@ -170,7 +173,7 @@ export default class Test extends Runnable {
       }
     }
 
-    if (props.err) {
+    if (props.err || props.state) {
       this._withAttempt(this.currentRetry, (attempt: Attempt) => {
         attempt.update(props)
       })

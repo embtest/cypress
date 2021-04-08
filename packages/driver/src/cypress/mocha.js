@@ -33,9 +33,10 @@ const suiteAfterEach = Suite.prototype.afterEach
 delete window.mocha
 delete window.Mocha
 
-function invokeFnWithOriginalTitle (ctx, originalTitle, mochaArgs, fn) {
+function invokeFnWithOriginalTitle (ctx, originalTitle, mochaArgs, fn, _testConfig) {
   const ret = fn.apply(ctx, mochaArgs)
 
+  ret._testConfig = _testConfig
   ret.originalTitle = originalTitle
 
   return ret
@@ -64,11 +65,11 @@ function overloadMochaFnForConfig (fnName, specWindow) {
       const origFn = subFn ? _fn[subFn] : _fn
 
       if (args.length > 2 && _.isObject(args[1])) {
-        const opts = _.extend({}, args[1])
+        const _testConfig = _.extend({}, args[1])
 
         const mochaArgs = [args[0], args[2]]
 
-        const configMatchesBrowser = opts.browser == null || Cypress.isBrowser(opts.browser, `${fnType} config value \`{ browser }\``)
+        const configMatchesBrowser = _testConfig.browser == null || Cypress.isBrowser(_testConfig.browser, `${fnType} config value \`{ browser }\``)
 
         if (!configMatchesBrowser) {
           // TODO: this would mess up the dashboard since it would be registered as a new test
@@ -82,15 +83,15 @@ function overloadMochaFnForConfig (fnName, specWindow) {
               this.skip()
             }
 
-            return invokeFnWithOriginalTitle(this, originalTitle, mochaArgs, origFn)
+            return invokeFnWithOriginalTitle(this, originalTitle, mochaArgs, origFn, _testConfig)
           }
 
-          return invokeFnWithOriginalTitle(this, originalTitle, mochaArgs, _fn['skip'])
+          return invokeFnWithOriginalTitle(this, originalTitle, mochaArgs, _fn['skip'], _testConfig)
         }
 
         const ret = origFn.apply(this, mochaArgs)
 
-        ret.cfg = opts
+        ret._testConfig = _testConfig
 
         return ret
       }
@@ -100,30 +101,7 @@ function overloadMochaFnForConfig (fnName, specWindow) {
   })
 }
 
-const getInvocationDetails = (specWindow, config) => {
-  if (specWindow.Error) {
-    let stack = (new specWindow.Error()).stack
-
-    // note: specWindow.Cypress can be undefined or null
-    // if the user quickly reloads the tests multiple times
-
-    // firefox throws a different stack than chromium
-    // which includes stackframes from cypress_runner.js.
-    // So we drop the lines until we get to the spec stackframe (incldues __cypress/tests)
-    if (specWindow.Cypress && specWindow.Cypress.isBrowser('firefox')) {
-      stack = $stackUtils.stackWithLinesDroppedFromMarker(stack, '__cypress/tests', true)
-    }
-
-    const details = $stackUtils.getSourceDetailsForFirstLine(stack, config('projectRoot'))
-
-    return {
-      details,
-      stack,
-    }
-  }
-}
-
-const ui = (specWindow, _mocha) => {
+const ui = (specWindow, _mocha, config) => {
   // Override mocha.ui so that the pre-require event is emitted
   // with the iframe's `window` reference, rather than the parent's.
   _mocha.ui = function (name) {
@@ -325,7 +303,7 @@ function patchTestClone () {
     const ret = testClone.apply(this, arguments)
 
     // carry over testConfigOverrides
-    ret.cfg = this.cfg
+    ret._testConfig = this._testConfig
 
     // carry over test.id
     ret.id = this.id
@@ -374,7 +352,7 @@ const patchSuiteAddTest = (specWindow, config) => {
     const test = args[0]
 
     if (!test.invocationDetails) {
-      test.invocationDetails = getInvocationDetails(specWindow, config).details
+      test.invocationDetails = $stackUtils.getInvocationDetails(specWindow, config).details
     }
 
     const ret = suiteAddTest.apply(this, args)
@@ -406,7 +384,7 @@ const patchSuiteAddSuite = (specWindow, config) => {
     const suite = args[0]
 
     if (!suite.invocationDetails) {
-      suite.invocationDetails = getInvocationDetails(specWindow, config).details
+      suite.invocationDetails = $stackUtils.getInvocationDetails(specWindow, config).details
     }
 
     return suiteAddSuite.apply(this, args)
@@ -456,7 +434,7 @@ const patchSuiteHooks = (specWindow, config) => {
         let invocationStack = hook.invocationDetails?.stack
 
         if (!hook.invocationDetails) {
-          const invocationDetails = getInvocationDetails(specWindow, config)
+          const invocationDetails = $stackUtils.getInvocationDetails(specWindow, config)
 
           hook.invocationDetails = invocationDetails.details
           invocationStack = invocationDetails.stack

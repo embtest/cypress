@@ -74,6 +74,7 @@ export default class Iframes extends Component {
     this.props.eventManager.on('before:screenshot', this.autIframe.beforeScreenshot)
     this.props.eventManager.on('after:screenshot', this.autIframe.afterScreenshot)
     this.props.eventManager.on('script:error', this._setScriptError)
+    this.props.eventManager.on('visit:blank', this.autIframe.visitBlank)
 
     this.props.eventManager.on('run:end', this.autIframe.startStudio)
     this.props.eventManager.on('page:loading', (isLoading) => {
@@ -146,7 +147,16 @@ export default class Iframes extends Component {
     const $container = $(this.refs.container).empty()
     const $autIframe = this.autIframe.create(this.props.config).appendTo($container)
 
-    this.autIframe.showBlankContents()
+    this.autIframe.showInitialBlankContents()
+
+    // specs with type "component" can only arrive if the server has "componentTesting" experiment on
+    if (this.props.config.spec.specType === 'component') {
+      // In mount mode we need to render something right from spec file
+      // So load application tests to the aut frame
+      $autIframe.prop('src', specSrc)
+
+      return $autIframe
+    }
 
     const $specIframe = $('<iframe />', {
       id: `Your Spec: '${specSrc}'`,

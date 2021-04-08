@@ -5,7 +5,7 @@ import dom from '../lib/dom'
 import logger from '../lib/logger'
 import eventManager from '../lib/event-manager'
 import visitFailure from './visit-failure'
-import blankContents from './blank-contents'
+import { initialBlankContents, sessionBlankContents } from './blank-contents'
 import selectorPlaygroundModel from '../selector-playground/selector-playground-model'
 import studioRecorder from '../studio/studio-recorder'
 
@@ -24,8 +24,12 @@ export default class AutIframe {
     return this.$iframe
   }
 
-  showBlankContents () {
-    this._showContents(blankContents())
+  showInitialBlankContents () {
+    this._showContents(initialBlankContents())
+  }
+
+  showSessionBlankContents () {
+    this._showContents(sessionBlankContents())
   }
 
   showVisitFailure = (props) => {
@@ -58,6 +62,22 @@ export default class AutIframe {
     if (!Cypress) return
 
     return Cypress.cy.detachDom(this._contents())
+  }
+
+  visitBlank = ({ type } = { type: null }) => {
+    return new Promise((resolve) => {
+      this.$iframe[0].src = 'about:blank'
+
+      this.$iframe.one('load', () => {
+        if (type === 'session') {
+          this.showSessionBlankContents()
+        } else {
+          this.showInitialBlankContents()
+        }
+
+        resolve()
+      })
+    })
   }
 
   restoreDom = (snapshot) => {
