@@ -54,6 +54,20 @@ const getBaseUrl = () => {
   return defaultBaseUrl
 }
 
+const getCA = () => {
+  let ca
+
+  if (util.getEnv('CYPRESS_DOWNLOAD_MIRROR_CA')) {
+    ca = [util.getEnv('CYPRESS_DOWNLOAD_MIRROR_CA')]
+  }
+
+  if (util.getEnv('CYPRESS_DOWNLOAD_MIRROR_CAFILE')) {
+    ca = (ca || []).concat(fs.readFileSync(util.getEnv('CYPRESS_DOWNLOAD_MIRROR_CAFILE')).toString())
+  }
+
+  return ca
+}
+
 const prepend = (urlPath) => {
   const endpoint = url.resolve(getBaseUrl(), urlPath)
   const platform = os.platform()
@@ -184,6 +198,7 @@ const verifyDownloadedFile = (filename, expectedSize, expectedChecksum) => {
 const downloadFromUrl = ({ url, downloadDestination, progress }) => {
   return new Promise((resolve, reject) => {
     const proxy = getProxyUrl()
+    const ca = getCA()
 
     debug('Downloading package', {
       url,
@@ -196,6 +211,7 @@ const downloadFromUrl = ({ url, downloadDestination, progress }) => {
     const req = request({
       url,
       proxy,
+      agentOptions: { ca },
       followRedirect (response) {
         const version = response.headers['x-version']
 
@@ -326,4 +342,5 @@ module.exports = {
   start,
   getUrl,
   getProxyUrl,
+  getCA,
 }

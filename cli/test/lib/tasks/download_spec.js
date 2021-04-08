@@ -337,4 +337,34 @@ describe('lib/tasks/download', function () {
       expect(download.getProxyUrl()).to.eq('baz')
     })
   })
+
+  context('with CA and CAFILE env vars', () => {
+    beforeEach(function () {
+      this.env = _.clone(process.env)
+    })
+
+    afterEach(function () {
+      process.env = this.env
+    })
+
+    it('returns undefined if not set', () => {
+      expect(download.getCA()).to.be.undefined
+    })
+
+    it('returns CA from CYPRESS_DOWNLOAD_MIRROR_CA', () => {
+      process.env.CYPRESS_DOWNLOAD_MIRROR_CA = 'foo'
+      expect(download.getCA()).to.eqls(['foo'])
+    })
+
+    it('returns CA from CYPRESS_DOWNLOAD_MIRROR_CAFILE', () => {
+      process.env.CYPRESS_DOWNLOAD_MIRROR_CAFILE = 'test/fixture/cafile.pem'
+      expect(download.getCA()).to.eqls(['bar\n'])
+    })
+
+    it('returns CA from both CYPRESS_DOWNLOAD_MIRROR_CA and CYPRESS_DOWNLOAD_MIRROR_CAFILE', () => {
+      process.env.CYPRESS_DOWNLOAD_MIRROR_CA = 'foo'
+      process.env.CYPRESS_DOWNLOAD_MIRROR_CAFILE = 'test/fixture/cafile.pem'
+      expect(download.getCA()).to.eqls(['foo', 'bar\n'])
+    })
+  })
 })
