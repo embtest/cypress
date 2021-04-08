@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import cn from 'classnames'
 import { observer } from 'mobx-react'
-import React from 'react'
+import React, { useState } from 'react'
 import Tooltip from '@cypress/react-tooltip'
 import { ObjectInspector, ObjectName } from 'react-inspector'
 import { configFileFormatted } from '../lib/config-file-formatted'
@@ -48,7 +48,27 @@ const normalizeWithoutMeta = (value = {}) => {
 }
 
 const ObjectLabel = ({ name, data, expanded, from, isNonenumerable }) => {
-  const formattedData = formatValue(data)
+  let formattedData = formatValue(data)
+
+  const iconStyles = {
+    marginLeft: '8px',
+  }
+
+  const editableInputStyles = {
+    height: '18px',
+    width: '100px',
+  }
+  const [isEditable, setIsEditable] = useState(false)
+
+  const [value, setValue] = useState('')
+
+  const [configData, setConfigData] = useState(formattedData)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    setIsEditable(!isEditable)
+    setConfigData(value)
+  }
 
   return (
     <span className="line" key={name}>
@@ -59,13 +79,32 @@ const ObjectLabel = ({ name, data, expanded, from, isNonenumerable }) => {
           {from && (
             <Tooltip title={from} placement='right' className='cy-tooltip'>
               <span className={cn(from, 'key-value-pair-value')}>
-                <span>{formattedData}</span>
+                { isEditable
+                  ?
+                  <form className='form-inline' onSubmit={handleSubmit}>
+                    <input
+                      className='form-control'
+                      onChange={(e) => setValue(e.target.value)}
+                      placeholder={configData}
+                      style={editableInputStyles}
+                      type='text'
+                      value={value}
+                    />
+                  </form>
+                  :
+                  <React.Fragment>
+                    <span>
+                      { configData ? configData : formattedData }
+                    </span>
+                    <i className="fas fa-edit" style={iconStyles} onClick={() => setIsEditable(!isEditable)}></i>
+                  </React.Fragment>
+                }
               </span>
             </Tooltip>
           )}
           {!from && (
             <span className={cn(from, 'key-value-pair-value')}>
-              <span>{formattedData}</span>
+              <span>{configData}</span>
             </span>
           )}
         </>
