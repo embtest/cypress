@@ -1,6 +1,5 @@
 const _ = require('lodash')
 const path = require('path')
-const stripAnsi = require('strip-ansi')
 const stackUtils = require('./util/stack_utils')
 // mocha-* is used to allow us to have later versions of mocha specified in devDependencies
 // and prevents accidently upgrading this one
@@ -9,7 +8,6 @@ const Mocha = require('mocha-7.0.1')
 const mochaReporters = require('mocha-7.0.1/lib/reporters')
 const mochaCreateStatsCollector = require('mocha-7.0.1/lib/stats-collector')
 const mochaColor = mochaReporters.Base.color
-const mochaUseColors = mochaReporters.Base.useColors
 
 const debug = require('debug')('cypress:server:reporter')
 const Promise = require('bluebird')
@@ -180,22 +178,20 @@ const mergeErr = function (runnable, runnables, stats) {
   let test = runnables[runnable.id]
 
   test.err = runnable.err
-
-  test.err.stack = stackUtils.stackWithoutMessage(test.err.stack)
-
-  // TODO: clean this up, what to do about custom reporters
-  const diff = runnable.err.diff
-
-  if (diff) {
-    test.err.message = `${test.err.message}${mochaUseColors ? diff : stripAnsi(diff)}`
-  }
-
-  test.err.message = `${test.err.name}: ${test.err.message}`
-
   test.state = 'failed'
 
   if (runnable.type === 'hook') {
     test.failedFromHookId = runnable.hookId
+  }
+
+  if (test._currentRetry !== 0) {
+    test.originalErr = test.err
+    const compositeErr = createCompositeErrorFromAttempts((test.prevAttempts || []).concat([runnable]))
+
+    test.err = {
+      message: compositeErr,
+      stack: compositeErr,
+    }
   }
 
   // dont mutate the test, and merge in the runnable title
@@ -250,6 +246,27 @@ const events = {
 const reporters = {
   teamcity: 'mocha-teamcity-reporter',
   junit: 'mocha-junit-reporter',
+}
+
+function createCompositeErrorFromAttempts (attempts, errorIndent = '     ') {
+  if (attempts.length < 2) return _.get(attempts[0], 'err.stack')
+
+  const compactErrs = []
+
+  for (let i = 0; i < attempts.length; i++) {
+    const _i = i
+    const err = _.get(attempts[i], 'err.stack')
+
+    while (_.get(attempts[i + 1], 'err.stack') === err) {
+      i++
+    }
+
+    const errPrefix = _i === i ? `(Attempt ${i + 1})` : `(Attempt ${_i + 1}-${i})`
+
+    compactErrs.push(`${errPrefix} ${err}`)
+  }
+
+  return compactErrs.join(`\n\n${errorIndent}`)
 }
 
 class Reporter {
@@ -372,10 +389,12 @@ class Reporter {
       body: orNull(test.body),
       displayError: orNull(test.err && test.err.stack),
       attempts: _.map((test.prevAttempts || []).concat([test]), (attempt) => {
-        const err = attempt.err && {
-          name: attempt.err.name,
-          message: attempt.err.message,
-          stack: attempt.err.stack,
+        let err = attempt.originalErr || attempt.err
+
+        err = err && {
+          name: err.name,
+          message: err.message,
+          stack: stackUtils.stackWithoutMessage(err.stack),
         }
 
         return {
