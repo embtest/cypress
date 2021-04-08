@@ -37,10 +37,9 @@ export const options = [
     defaultValue: '/__/',
     isInternal: true,
   }, {
-    name: 'component',
-    // runner-ct overrides
-    defaultValue: {},
-    validation: v.isValidConfig,
+    name: 'clientPkiCertificates',
+    defaultValue: [],
+    validation: v.isValidClientPkiCertificatesSet,
   }, {
     name: 'componentFolder',
     defaultValue: 'cypress/component',
@@ -63,11 +62,6 @@ export const options = [
     validation: v.isString,
     isFolder: true,
   }, {
-    name: 'e2e',
-    // e2e runner overrides
-    defaultValue: {},
-    validation: v.isValidConfig,
-  }, {
     name: 'env',
     validation: v.isPlainObject,
   }, {
@@ -81,6 +75,11 @@ export const options = [
     isExperimental: true,
   }, {
     name: 'experimentalFetchPolyfill',
+    defaultValue: false,
+    validation: v.isBoolean,
+    isExperimental: true,
+  }, {
+    name: 'experimentalRunEvents',
     defaultValue: false,
     validation: v.isBoolean,
     isExperimental: true,
@@ -135,10 +134,6 @@ export const options = [
     name: 'javascripts',
     defaultValue: [],
     isInternal: true,
-  }, {
-    name: 'keystrokeDelay',
-    defaultValue: 10,
-    validation: v.isNumberOrFalse,
   }, {
     name: 'morgan',
     defaultValue: true,
@@ -224,7 +219,7 @@ export const options = [
     defaultValue: '/__socket.io',
     isInternal: true,
   }, {
-    name: 'devServerPublicPathRoute',
+    name: 'webpackDevServerPublicPathRoute',
     defaultValue: '/__cypress/src',
     isInternal: true,
   }, {
@@ -313,16 +308,12 @@ export const breakingOptions = [
     errorKey: 'EXPERIMENTAL_SAMESITE_REMOVED',
     isWarning: true,
   }, {
-    name: 'experimentalNetworkStubbing',
-    errorKey: 'EXPERIMENTAL_NETWORK_STUBBING_REMOVED',
-    isWarning: true,
-  }, {
-    name: 'experimentalRunEvents',
-    errorKey: 'EXPERIMENTAL_RUN_EVENTS_REMOVED',
-    isWarning: true,
-  }, {
     name: 'experimentalShadowDomSupport',
     errorKey: 'EXPERIMENTAL_SHADOW_DOM_REMOVED',
+    isWarning: true,
+  }, {
+    name: 'experimentalNetworkStubbing',
+    errorKey: 'EXPERIMENTAL_NETWORK_STUBBING_REMOVED',
     isWarning: true,
   },
 ]

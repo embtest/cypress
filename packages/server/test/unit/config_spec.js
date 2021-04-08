@@ -56,7 +56,8 @@ describe('lib/config', () => {
 
       this.setup = (cypressJson = {}, cypressEnvJson = {}) => {
         sinon.stub(settings, 'read').withArgs(this.projectRoot).resolves(cypressJson)
-        sinon.stub(settings, 'readEnv').withArgs(this.projectRoot).resolves(cypressEnvJson)
+
+        return sinon.stub(settings, 'readEnv').withArgs(this.projectRoot).resolves(cypressEnvJson)
       }
     })
 
@@ -77,19 +78,6 @@ describe('lib/config', () => {
       return config.get(this.projectRoot)
       .then((obj) => {
         expect(obj.projectName).to.eq('project')
-      })
-    })
-
-    it('clones settings and env settings, so they are not mutated', function () {
-      const settings = { foo: 'bar' }
-      const envSettings = { baz: 'qux' }
-
-      this.setup(settings, envSettings)
-
-      return config.get(this.projectRoot)
-      .then(() => {
-        expect(settings).to.deep.equal({ foo: 'bar' })
-        expect(envSettings).to.deep.equal({ baz: 'qux' })
       })
     })
 
@@ -228,65 +216,6 @@ describe('lib/config', () => {
           this.expectValidationFails('be a boolean')
 
           return this.expectValidationFails('the value was: `42`')
-        })
-      })
-
-      context('component', () => {
-        it('passes if an object with valid properties', function () {
-          this.setup({
-            component: {
-              baseUrl: 'https://cypress.com',
-              execTimeout: 10000,
-            },
-          })
-
-          return this.expectValidationPasses()
-        })
-
-        it('fails if not a plain object', function () {
-          this.setup({ component: false })
-          this.expectValidationFails('to be a plain object')
-
-          return this.expectValidationFails('the value was: `false`')
-        })
-
-        it('fails if nested property is incorrect', function () {
-          this.setup({ component: { baseUrl: false } })
-          this.expectValidationFails('Expected `component.baseUrl` to be a fully qualified URL (starting with `http://` or `https://`).')
-
-          return this.expectValidationFails('the value was: `false`')
-        })
-      })
-
-      context('e2e', () => {
-        it('passes if an object with valid properties', function () {
-          this.setup({
-            e2e: {
-              baseUrl: 'https://cypress.com',
-              execTimeout: 10000,
-            },
-          })
-        })
-
-        it('fails if not a plain object', function () {
-          this.setup({ e2e: false })
-          this.expectValidationFails('to be a plain object')
-
-          return this.expectValidationFails('the value was: `false`')
-        })
-
-        it('fails if nested property is incorrect', function () {
-          this.setup({ e2e: { animationDistanceThreshold: 'this is definitely not a number' } })
-          this.expectValidationFails('Expected `e2e.animationDistanceThreshold` to be a number')
-
-          return this.expectValidationFails('the value was: `"this is definitely not a number"`')
-        })
-
-        it('fails if nested property is incorrect', function () {
-          this.setup({ component: { baseUrl: false } })
-          this.expectValidationFails('Expected `component.baseUrl` to be a fully qualified URL (starting with `http://` or `https://`).')
-
-          return this.expectValidationFails('the value was: `false`')
         })
       })
 
@@ -884,6 +813,98 @@ describe('lib/config', () => {
           return this.expectValidationFails('a positive number or null or an object')
         })
       })
+
+      function pemCertificate () {
+        return {
+          clientPkiCertificates: [
+            {
+              url: 'https://somewhere.com/*',
+              ca: ['certs/ca.crt'],
+              certs: [
+                {
+                  cert: 'certs/cert.crt',
+                  key: 'certs/cert.key',
+                  passphrase: 'certs/cert.key.pass',
+                },
+              ],
+            },
+          ] }
+      }
+
+      function pfxCertificate () {
+        return {
+          clientPkiCertificates: [
+            {
+              url: 'https://somewhere.com/*',
+              ca: ['certs/ca.crt'],
+              certs: [
+                {
+                  pfx: 'certs/cert.pfx',
+                  passphrase: 'certs/cerpfx.pass',
+                },
+              ],
+            },
+          ] }
+      }
+
+      context('clientPkiCertificates', () => {
+        it('accepts valid PEM config', function () {
+          this.setup(pemCertificate())
+
+          return this.expectValidationPasses()
+        })
+
+        it('accepts valid PFX config', function () {
+          this.setup(pfxCertificate())
+
+          return this.expectValidationPasses()
+        })
+
+        it('detects invalid config with no url', function () {
+          let cfg = pemCertificate()
+
+          cfg.clientPkiCertificates[0].url = null
+          this.setup(cfg)
+
+          return this.expectValidationFails('`clientPkiCertificates[0].url` to be a URL matcher')
+        })
+
+        it('detects invalid config with no certs', function () {
+          let cfg = pemCertificate()
+
+          cfg.clientPkiCertificates[0].certs = null
+          this.setup(cfg)
+
+          return this.expectValidationFails('`clientPkiCertificates[0].certs` to be an array of certs')
+        })
+
+        it('detects invalid config with no cert', function () {
+          let cfg = pemCertificate()
+
+          cfg.clientPkiCertificates[0].certs[0].cert = null
+          this.setup(cfg)
+
+          return this.expectValidationFails('`clientPkiCertificates[0].certs[0]` must have either PEM or PFX defined')
+        })
+
+        it('detects invalid config with PEM and PFX certs', function () {
+          let cfg = pemCertificate()
+
+          cfg.clientPkiCertificates[0].certs[0].pfx = 'a_file'
+          this.setup(cfg)
+
+          return this.expectValidationFails('`clientPkiCertificates[0].certs[0]` has both PEM and PFX defined')
+        })
+
+        it('detects invalid PEM config with no key', function () {
+          let cfg = pemCertificate()
+
+          cfg.clientPkiCertificates[0].certs[0].key = null
+          this.setup(cfg)
+
+          return this.expectValidationFails('`clientPkiCertificates[0].certs[0].key` to be a key filepath')
+        })
+      })
     })
   })
 
@@ -1281,16 +1302,6 @@ describe('lib/config', () => {
       expect(warning).to.be.calledWith('EXPERIMENTAL_SHADOW_DOM_REMOVED')
     })
 
-    it('warns if experimentalRunEvents is passed', async function () {
-      const warning = sinon.spy(errors, 'warning')
-
-      await this.defaults('experimentalRunEvents', true, {
-        experimentalRunEvents: true,
-      })
-
-      expect(warning).to.be.calledWith('EXPERIMENTAL_RUN_EVENTS_REMOVED')
-    })
-
     // @see https://github.com/cypress-io/cypress/pull/9185
     it('warns if experimentalNetworkStubbing is passed', async function () {
       const warning = sinon.spy(errors, 'warning')
@@ -1321,15 +1332,15 @@ describe('lib/config', () => {
             blockHosts: { value: null, from: 'default' },
             browsers: { value: [], from: 'default' },
             chromeWebSecurity: { value: true, from: 'default' },
-            component: { from: 'default', value: {} },
+            clientPkiCertificates: { value: [], from: 'default' },
             componentFolder: { value: 'cypress/component', from: 'default' },
             defaultCommandTimeout: { value: 4000, from: 'default' },
             downloadsFolder: { value: 'cypress/downloads', from: 'default' },
-            e2e: { from: 'default', value: {} },
             env: {},
             execTimeout: { value: 60000, from: 'default' },
             experimentalComponentTesting: { value: false, from: 'default' },
             experimentalFetchPolyfill: { value: false, from: 'default' },
+            experimentalRunEvents: { value: false, from: 'default' },
             experimentalSourceRewriting: { value: false, from: 'default' },
             experimentalStudio: { value: false, from: 'default' },
             fileServerFolder: { value: '', from: 'default' },
@@ -1339,7 +1350,6 @@ describe('lib/config', () => {
             ignoreTestFiles: { value: '*.hot-update.js', from: 'default' },
             includeShadowDom: { value: false, from: 'default' },
             integrationFolder: { value: 'cypress/integration', from: 'default' },
-            keystrokeDelay: { value: 10, from: 'default' },
             modifyObstructiveCode: { value: true, from: 'default' },
             nodeVersion: { value: 'default', from: 'default' },
             numTestsKeptInMemory: { value: 50, from: 'default' },
@@ -1405,14 +1415,14 @@ describe('lib/config', () => {
             blockHosts: { value: null, from: 'default' },
             browsers: { value: [], from: 'default' },
             chromeWebSecurity: { value: true, from: 'default' },
-            component: { from: 'default', value: {} },
+            clientPkiCertificates: { value: [], from: 'default' },
             componentFolder: { value: 'cypress/component', from: 'default' },
             defaultCommandTimeout: { value: 4000, from: 'default' },
             downloadsFolder: { value: 'cypress/downloads', from: 'default' },
-            e2e: { from: 'default', value: {} },
             execTimeout: { value: 60000, from: 'default' },
             experimentalComponentTesting: { value: false, from: 'default' },
             experimentalFetchPolyfill: { value: false, from: 'default' },
+            experimentalRunEvents: { value: false, from: 'default' },
             experimentalSourceRewriting: { value: false, from: 'default' },
             experimentalStudio: { value: false, from: 'default' },
             env: {
@@ -1444,7 +1454,6 @@ describe('lib/config', () => {
             ignoreTestFiles: { value: '*.hot-update.js', from: 'default' },
             includeShadowDom: { value: false, from: 'default' },
             integrationFolder: { value: 'cypress/integration', from: 'default' },
-            keystrokeDelay: { value: 10, from: 'default' },
             modifyObstructiveCode: { value: true, from: 'default' },
             nodeVersion: { value: 'default', from: 'default' },
             numTestsKeptInMemory: { value: 50, from: 'default' },

@@ -19,11 +19,12 @@ import appData from './util/app_data'
 import * as ensureUrl from './util/ensure-url'
 import headersUtil from './util/headers'
 import statusCode from './util/status_code'
+import { loadPkiConfig } from './pki'
 
 type WarningErr = Record<string, any>
 
 const fullyQualifiedRe = /^https?:\/\//
-const htmlContentTypesRe = /^(text\/html|application\/xhtml)/i
+const textHtmlContentTypeRe = /^text\/html/i
 
 const debug = Debug('cypress:server:server-e2e')
 
@@ -32,7 +33,7 @@ const isResponseHtml = function (contentType, responseBuffer) {
     // want to match anything starting with 'text/html'
     // including 'text/html;charset=utf-8' and 'Text/HTML'
     // https://github.com/cypress-io/cypress/issues/8506
-    return htmlContentTypesRe.test(contentType)
+    return textHtmlContentTypeRe.test(contentType)
   }
 
   const body = _.invoke(responseBuffer, 'toString')
@@ -65,6 +66,8 @@ export class ServerE2E extends ServerBase<SocketE2E> {
 
       this._nodeProxy = httpProxy.createProxyServer()
       this._socket = new SocketE2E(config)
+
+      loadPkiConfig(config)
 
       const getRemoteState = () => {
         return this._getRemoteState()

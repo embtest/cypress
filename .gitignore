@@ -7,7 +7,6 @@ build
 .publish
 _test-output
 cypress.zip
-.babel-cache
 
 # from extension
 Cached Theme.pak
@@ -21,17 +20,13 @@ packages/desktop-gui/src/jsconfig.json
 packages/driver/cypress/videos
 packages/driver/cypress/screenshots
 
-# from runner
-packages/runner/cypress/videos
-packages/runner/cypress/screenshots
-
 # npm packages
 npm/**/cypress/screenshots
 
 # from example
 packages/example/app
 packages/example/build
-packages/example/cypress/integration
+packages/example/cypress
 
 # from server
 packages/server/.cy
@@ -52,10 +47,6 @@ packages/server/test/support/fixtures/server/libs
 
 # from runner-ct
 /packages/runner-ct/cypress/screenshots
-
-# from npm/create-cypress-tests
-/npm/create-cypress-tests/initial-template
-/npm/create-cypress-tests/src/test-output
 
 # Building app binary
 scripts/support
@@ -340,3 +331,6 @@ $RECYCLE.BIN/
 
 /npm/react/bin/*
 # End of https://www.gitignore.io/api/osx,git,node,windows,intellij,linux
+
+# Temporary test PKI files
+server-pki-test*

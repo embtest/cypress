@@ -6,11 +6,13 @@ import net from 'net'
 import { getProxyForUrl } from 'proxy-from-env'
 import url from 'url'
 import { createRetryingSocket, getAddress } from './connect'
-import { lenientOptions } from './http-utils'
+import { ClientPkiCertificateStore } from './pki'
 
 const debug = debugModule('cypress:network:agent')
 const CRLF = '\r\n'
 const statusCodeRe = /^HTTP\/1.[01] (\d*)/
+
+export const clientPkiCertificateStore = new ClientPkiCertificateStore()
 
 type WithProxyOpts<RequestOptions> = RequestOptions & {
   proxy: string
@@ -49,8 +51,8 @@ interface CreateProxySockOpts {
 type CreateProxySockCb = (
   (err: undefined, result: net.Socket, triggerRetry: (err: Error) => void) => void
 ) & (
-  (err: Error) => void
-)
+    (err: Error) => void
+  )
 
 export const createProxySock = (opts: CreateProxySockOpts, cb: CreateProxySockCb) => {
   if (opts.proxy.protocol !== 'https:' && opts.proxy.protocol !== 'http:') {
@@ -152,7 +154,9 @@ export class CombinedAgent {
 
   // called by Node.js whenever a new request is made internally
   addRequest (req: http.ClientRequest, options: http.RequestOptions, port?: number, localAddress?: string) {
-    _.merge(req, lenientOptions)
+    // allow requests which contain invalid/malformed headers
+    // https://github.com/cypress-io/cypress/issues/5602
+    req.insecureHTTPParser = true
 
     // Legacy API: addRequest(req, host, port, localAddress)
     // https://github.com/nodejs/node/blob/cb68c04ce1bc4534b2d92bc7319c6ff6dda0180d/lib/_http_agent.js#L148-L155
@@ -190,6 +194,8 @@ export class CombinedAgent {
       debug('got family %o', _.pick(options, 'family', 'href'))
 
       if (isHttps) {
+        _.assign(options, clientPkiCertificateStore.getPkiAgentOptionsForUrl(options.uri))
+
         return this.httpsAgent.addRequest(req, options)
       }
 
