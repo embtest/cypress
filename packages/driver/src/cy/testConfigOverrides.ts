@@ -44,22 +44,20 @@ function mutateConfiguration (testConfigOverride, config, env) {
   return restoreConfigFn
 }
 
-// this is called during test onRunnable time
-// in order to resolve the test config upfront before test runs
 export function getResolvedTestConfigOverride (test) {
   let curParent = test.parent
 
-  const testConfig = [test._testConfig]
+  const cfgs = [test.cfg]
 
   while (curParent) {
-    if (curParent._testConfig) {
-      testConfig.push(curParent._testConfig)
+    if (curParent.cfg) {
+      cfgs.push(curParent.cfg)
     }
 
     curParent = curParent.parent
   }
 
-  return _.reduceRight(testConfig, (acc, opts) => _.extend(acc, opts), {})
+  return _.reduceRight(cfgs, (acc, cfg) => _.extend(acc, cfg), {})
 }
 
 class TestConfigOverride {
@@ -67,7 +65,7 @@ class TestConfigOverride {
   restoreAndSetTestConfigOverrides (test, config, env) {
     if (this.restoreTestConfigFn) this.restoreTestConfigFn()
 
-    const resolvedTestConfig = test._testConfig || {}
+    const resolvedTestConfig = test.cfg || {}
 
     this.restoreTestConfigFn = mutateConfiguration(resolvedTestConfig, config, env)
   }

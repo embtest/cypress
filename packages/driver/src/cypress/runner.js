@@ -1,7 +1,7 @@
 /* eslint-disable prefer-rest-params */
 /* globals Cypress */
 const _ = require('lodash')
-const dayjs = require('dayjs')
+const moment = require('moment')
 const Promise = require('bluebird')
 const Pending = require('mocha/lib/pending')
 
@@ -19,9 +19,8 @@ const TEST_BEFORE_RUN_EVENT = 'runner:test:before:run'
 const TEST_AFTER_RUN_EVENT = 'runner:test:after:run'
 
 const RUNNABLE_LOGS = 'routes agents commands hooks'.split(' ')
-const RUNNABLE_PROPS = '_testConfig id order title _titlePath root hookName hookId err state failedFromHookId body speed type duration wallClockStartedAt wallClockDuration timings file originalTitle invocationDetails final currentRetry retries'.split(' ')
+const RUNNABLE_PROPS = 'cfg muted id order title _titlePath root hookName hookId err state failedFromHookId body speed type duration wallClockStartedAt wallClockDuration timings file originalTitle invocationDetails final currentRetry retries'.split(' ')
 const debug = require('debug')('cypress:driver:runner')
-const debugErrors = require('debug')('cypress:driver:errors')
 
 const fire = (event, runnable, Cypress) => {
   debug('fire: %o', { event })
@@ -411,7 +410,7 @@ const overrideRunnerHook = (Cypress, _runner, getTestById, getTest, setTest, get
 
         if (test.final !== false) {
           test.final = true
-          if (test.state === 'passed') {
+          if (test.state === 'passed' && !test.muted) {
             Cypress.action('runner:pass', wrap(test))
           }
 
@@ -463,8 +462,7 @@ const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnab
   })
 
   // if we dont have any tests then bail
-  // unless we're using studio to add to the root suite
-  if (!hasTests && getOnlySuiteId() !== 'r1') {
+  if (!hasTests) {
     return
   }
 
@@ -493,17 +491,6 @@ const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnab
     // same pattern here
     setTests(testsArr)
   }
-
-  // generate the diff of the config after spec has been executed
-  // e.g. config changes via Cypress.config('...')
-  normalizedSuite.runtimeConfig = {}
-  _.map(Cypress.config(), (v, key) => {
-    if (_.isEqual(v, Cypress.originalConfig[key])) {
-      return null
-    }
-
-    normalizedSuite.runtimeConfig[key] = v
-  })
 
   return normalizedSuite
 }
@@ -564,8 +551,8 @@ const normalize = (runnable, tests, initialTests, onRunnable, onLogsById, getRun
       const cfg = getResolvedTestConfigOverride(runnable)
 
       if (_.size(cfg)) {
-        runnable._testConfig = cfg
-        wrappedRunnable._testConfig = cfg
+        runnable.cfg = cfg
+        wrappedRunnable.cfg = cfg
       }
 
       wrappedRunnable._titlePath = runnable.titlePath()
@@ -950,6 +937,13 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
       hookName = getHookName(runnable)
       const test = getTest() || getTestFromHookOrFindTest(runnable)
 
+      if (test.muted) {
+        // we can only mute the failure if it happens inside the test body,
+        // otherwise other tests could be skipped due to hook, and a spec could pass without a failure
+        // AND without having run some tests
+        test.muted = false
+      }
+
       // append a friendly message to the error indicating
       // we're skipping the remaining tests in this suite
       err = $errUtils.appendErrMsg(
@@ -970,7 +964,9 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
       // do not double emit this event
       runnable.alreadyEmittedMocha = true
 
-      Cypress.action('runner:fail', wrap(runnable), runnable.err)
+      if (!runnable.muted) {
+        Cypress.action('runner:fail', wrap(runnable), runnable.err)
+      }
     }
 
     // if we've already fired the test after run event
@@ -990,11 +986,12 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
   })
 }
 
-const create = (specWindow, mocha, Cypress, cy, state) => {
+const create = (specWindow, mocha, Cypress, cy) => {
   let _runnableId = 0
   let _hookId = 0
   let _uncaughtFn = null
   let _resumedAtTestIndex = null
+  let _testActions = null
 
   const _runner = mocha.getRunner()
 
@@ -1027,52 +1024,48 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
     return foundTest
   }
 
-  // eslint-disable-next-line @cypress/dev/arrow-body-multiline-braces
-  const onSpecError = (handlerType) => (event) => {
-    let { originalErr, err } = $errUtils.errorFromUncaughtEvent(handlerType, event)
-
-    debugErrors('uncaught spec error: %o', originalErr)
-
-    $errUtils.logError(Cypress, handlerType, originalErr)
-
-    // we can stop here because this error will fail the current test
-    if (state('runnable')) {
-      cy.onUncaughtException({
-        frameType: 'spec',
-        handlerType,
-        err,
-      })
-
-      return undefined
+  const onScriptError = (err) => {
+    // err will not be returned if cy can associate this
+    // uncaught exception to an existing runnable
+    if (!err) {
+      return true
     }
 
-    err = $errUtils.createUncaughtException({
-      frameType: 'spec',
-      handlerType,
-      state,
-      err,
-    })
+    const todoMsg = () => {
+      if (!Cypress.config('isTextTerminal')) {
+        return 'Check your console for the stack trace or click this message to see where it originated from.'
+      }
+    }
 
-    // otherwise there's no test to associate this error to
-    const appendMsg = [
+    const appendMsg = _.chain([
       'Cypress could not associate this error to any specific test.',
       'We dynamically generated a new test to display this failure.',
-    ].join('\n\n')
+      todoMsg(),
+    ])
+    .compact()
+    .join('\n\n')
+    .value()
 
     err = $errUtils.appendErrMsg(err, appendMsg)
 
-    // we use this below to create a test and tie this error to it
-    _uncaughtFn = () => {
+    const throwErr = () => {
       throw err
     }
+
+    // we could not associate this error
+    // and shouldn't ever start our run
+    _uncaughtFn = throwErr
 
     // return undefined so the browser does its default
     // uncaught exception behavior (logging to console)
     return undefined
   }
 
-  specWindow.addEventListener('error', onSpecError('error'))
-  specWindow.addEventListener('unhandledrejection', onSpecError('unhandledrejection'))
+  specWindow.onerror = function () {
+    const err = cy.onSpecWindowUncaughtException.apply(cy, arguments)
+
+    return onScriptError(err)
+  }
 
   // hold onto the _runnables for faster lookup later
   let _test = null
@@ -1135,6 +1128,10 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
     }
 
     return _testsById[id]
+  }
+
+  const isMutedTest = (test) => {
+    return _.some(_testActions, (action) => action.action === 'MUTE' && action.clientId === test.id)
   }
 
   const replaceTest = (runnable, id) => {
@@ -1265,7 +1262,7 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
   }
 
   return {
-    onSpecError,
+    onScriptError,
     setOnlyTestId,
     setOnlySuiteId,
 
@@ -1302,7 +1299,7 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
 
     run (fn) {
       if (_startTime == null) {
-        _startTime = dayjs().toJSON()
+        _startTime = moment().toJSON()
       }
 
       _runnerListeners(_runner, Cypress, _emissions, getTestById, getTest, setTest, getTestFromHookOrFindTest)
@@ -1388,6 +1385,12 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
         const retries = Cypress.getTestRetries() ?? -1
 
         test._retries = retries
+
+        if (isMutedTest(test)) {
+          // mark the test as muted. we use this property to prevent emitting the pass/fail event
+          // to the terminal reporter, and to change how it's displayed in the browser reporter
+          test.muted = true
+        }
       }
 
       const isHook = runnable.type === 'hook'
@@ -1549,6 +1552,8 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
 
     countByTestState (tests, state) {
       const count = _.filter(tests, (test, key) => {
+        if (test.muted) return false
+
         return test.state === state
       })
 
@@ -1647,6 +1652,14 @@ const create = (specWindow, mocha, Cypress, cy, state) => {
 
     getResumedAtTestIndex () {
       return _resumedAtTestIndex
+    },
+
+    setTestActions (actions) {
+      _testActions = actions
+    },
+
+    getTestActions () {
+      return _testActions
     },
 
     cleanupQueue (numTestsKeptInMemory) {

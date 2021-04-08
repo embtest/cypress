@@ -4,8 +4,8 @@ const debug = require('debug')('cypress:server:open_project')
 const Promise = require('bluebird')
 const chokidar = require('chokidar')
 const pluralize = require('pluralize')
-const { ProjectCt } = require('@packages/server-ct/src/project-ct')
-const { ProjectE2E } = require('./project-e2e')
+
+const Project = require('./project')
 const browsers = require('./browsers')
 const specsUtil = require('./util/specs')
 const preprocessor = require('./plugins/preprocessor')
@@ -40,8 +40,6 @@ const moduleFactory = () => {
 
     createCiProject: tryToCall('createCiProject'),
 
-    writeProjectId: tryToCall('writeProjectId'),
-
     getRecordKeys: tryToCall('getRecordKeys'),
 
     getRuns: tryToCall('getRuns'),
@@ -52,11 +50,6 @@ const moduleFactory = () => {
 
     getProject () {
       return openProject
-    },
-
-    changeUrlToSpec (spec) {
-      return openProject.getSpecUrl(spec.absolute, spec.specType)
-      .then((newSpecUrl) => openProject.changeToUrl(newSpecUrl))
     },
 
     launch (browser, spec, options = {}) {
@@ -74,16 +67,17 @@ const moduleFactory = () => {
 
         return openProject.getConfig()
         .then((cfg) => {
-          _.defaults(options, {
-            browsers: cfg.browsers,
-            userAgent: cfg.userAgent,
-            proxyUrl: cfg.proxyUrl,
-            proxyServer: cfg.proxyServer,
-            socketIoRoute: cfg.socketIoRoute,
-            chromeWebSecurity: cfg.chromeWebSecurity,
-            isTextTerminal: cfg.isTextTerminal,
-            downloadsFolder: cfg.downloadsFolder,
-          })
+          options.browsers = cfg.browsers
+          options.proxyUrl = cfg.proxyUrl
+          options.userAgent = cfg.userAgent
+          options.proxyServer = cfg.proxyUrl
+          options.socketIoRoute = cfg.socketIoRoute
+          options.chromeWebSecurity = cfg.chromeWebSecurity
+          options.downloadsFolder = cfg.downloadsFolder
+
+          options.url = url
+
+          options.isTextTerminal = cfg.isTextTerminal
 
           // if we don't have the isHeaded property
           // then we're in interactive mode and we
@@ -97,7 +91,6 @@ const moduleFactory = () => {
           // set the current browser object on options
           // so we can pass it down
           options.browser = browser
-          options.url = url
 
           openProject.setCurrentSpecAndBrowser(spec, browser)
 
@@ -111,17 +104,15 @@ const moduleFactory = () => {
             automation.use(am)
           }
 
-          if (!am || !am.onBeforeRequest) {
-            automation.use({
-              onBeforeRequest (message, data) {
-                if (message === 'take:screenshot') {
-                  data.specName = spec.name
+          automation.use({
+            onBeforeRequest (message, data) {
+              if (message === 'take:screenshot') {
+                data.specName = spec.name
 
-                  return data
-                }
-              },
-            })
-          }
+                return data
+              }
+            },
+          })
 
           const { onBrowserClose } = options
 
@@ -149,41 +140,6 @@ const moduleFactory = () => {
 
           return relaunchBrowser()
         })
-      })
-    },
-
-    getSpecs (cfg) {
-      return specsUtil.find(cfg)
-      .then((specs = []) => {
-        // TODO merge logic with "run.js"
-        if (debug.enabled) {
-          const names = _.map(specs, 'name')
-
-          debug(
-            'found %s using spec pattern \'%s\': %o',
-            pluralize('spec', names.length, true),
-            cfg.testFiles,
-            names,
-          )
-        }
-
-        const componentTestingEnabled = _.get(cfg, 'resolved.testingType.value', 'e2e') === 'component'
-
-        if (componentTestingEnabled) {
-          // separate specs into integration and component lists
-          // note: _.remove modifies the array in place and returns removed elements
-          const component = _.remove(specs, { specType: 'component' })
-
-          return {
-            integration: specs,
-            component,
-          }
-        }
-
-        // assumes all specs are integration specs
-        return {
-          integration: specs,
-        }
       })
     },
 
@@ -222,9 +178,9 @@ const moduleFactory = () => {
       const createSpecsWatcher = (cfg) => {
         // TODO I keep repeating this to get the resolved value
         // probably better to have a single function that does this
-        const componentTestingEnabled = _.get(cfg, 'resolved.testingType.value', 'e2e') === 'component'
+        const experimentalComponentTestingEnabled = _.get(cfg, 'resolved.experimentalComponentTesting.value', false)
 
-        debug('createSpecWatch component testing enabled', componentTestingEnabled)
+        debug('createSpecWatch component testing enabled', experimentalComponentTestingEnabled)
 
         if (!this.specsWatcher) {
           debug('watching integration test files: %s in %s', cfg.testFiles, cfg.integrationFolder)
@@ -240,7 +196,7 @@ const moduleFactory = () => {
           this.specsWatcher.on('unlink', checkForSpecUpdates)
         }
 
-        if (componentTestingEnabled && !this.componentSpecsWatcher) {
+        if (experimentalComponentTestingEnabled && !this.componentSpecsWatcher) {
           debug('watching component test files: %s in %s', cfg.testFiles, cfg.componentFolder)
 
           this.componentSpecsWatcher = chokidar.watch(cfg.testFiles, {
@@ -260,7 +216,38 @@ const moduleFactory = () => {
         .then((cfg) => {
           createSpecsWatcher(cfg)
 
-          return this.getSpecs(cfg)
+          return specsUtil.find(cfg)
+          .then((specs = []) => {
+            // TODO merge logic with "run.js"
+            if (debug.enabled) {
+              const names = _.map(specs, 'name')
+
+              debug(
+                'found %s using spec pattern \'%s\': %o',
+                pluralize('spec', names.length, true),
+                cfg.testFiles,
+                names,
+              )
+            }
+
+            const experimentalComponentTestingEnabled = _.get(cfg, 'resolved.experimentalComponentTesting.value', false)
+
+            if (experimentalComponentTestingEnabled) {
+              // separate specs into integration and component lists
+              // note: _.remove modifies the array in place and returns removed elements
+              const component = _.remove(specs, { specType: 'component' })
+
+              return {
+                integration: specs,
+                component,
+              }
+            }
+
+            // assumes all specs are integration specs
+            return {
+              integration: specs,
+            }
+          })
         })
       }
 
@@ -311,7 +298,7 @@ const moduleFactory = () => {
       debug('and options %o', options)
 
       // store the currently open project
-      openProject = args.testingType === 'component' ? new ProjectCt(path) : new ProjectE2E(path)
+      openProject = new Project(path)
 
       _.defaults(options, {
         onReloadBrowser: () => {
@@ -332,7 +319,7 @@ const moduleFactory = () => {
       debug('opening project %s', path)
       debug('and options %o', options)
 
-      return openProject.open({ ...options, testingType: args.testingType })
+      return openProject.open(options)
       .return(this)
     },
   }

@@ -20,65 +20,6 @@
     padding-left: 0;
   }
 
-  .no-tests {
-    background-color: #f5f5f5;
-    min-height: 20px;
-    padding: 24px;
-
-    h2 {
-      color: #e94f5f;
-      font-size: 1.3em;
-      font-weight: 500;
-      line-height: 1.4;
-      margin-bottom: 0.6em;
-    }
-
-    h3 {
-      color: #3386d4;
-      font-size: 1.2em;
-      font-weight: 500;
-      line-height: 1.4;
-      margin-top: 1.2em;
-      margin-bottom: 0.3em;
-    }
-
-    p {
-      font-size: 1.1em;
-
-      &.text-muted {
-        color: #b4b5bc;
-      }
-    }
-
-    a {
-      color: #3386d4;
-      cursor: pointer;
-    }
-
-    i {
-      margin-right: 5px;
-    }
-
-    hr {
-      margin-top: 1.6em;
-      margin-bottom: 1.6em;
-      border: none;
-      height: 1px;
-      color: #dadade;
-      background-color: #dadade;
-    }
-
-    .open-studio,
-    .open-studio-desc {
-      display: none;
-    }
-  }
-
-  &.experimental-studio-enabled .no-tests .open-studio,
-  &.experimental-studio-enabled .no-tests .open-studio-desc {
-    display: inline;
-  }
-
   .runnable {
     width: 100%;
     color: #6c6c6c;
@@ -174,11 +115,15 @@
       }
     }
 
-    &.runnable-pending > div > .runnable-wrapper,
-    &.runnable-pending > div > .runnable-instruments {
-      border-left: 5px solid lighten($pending, 25%);
-      padding-bottom: 0;
-    }
+    &.runnable-pending {
+      .runnable-wrapper,.runnable-instruments {
+        border-left: 5px solid lighten($pending, 25%);
+        padding-bottom: 0;
+      }
+      &.muted .runnable-wrapper,.runnable-instruments {
+        border-left: 5px solid lighten($pending, 20%);
+      }
+    } 
 
     &.runnable-passed > div > .runnable-wrapper,
     &.runnable-passed > div > .runnable-instruments {
@@ -214,7 +159,21 @@
       .runnable-state {
         @include runnable-state-failed;
       }
+      &.muted {
+        .runnable-wrapper,.runnable-instruments {
+          border-left: 5px solid lighten($fail, 20%);
+        }
+      }
     }
+
+    // &.test.muted {
+    //   .runnable-state {
+    //     color: lighten($fail, 20%) !important;
+    //   }
+    //   .runnable-title {
+    //     color: unset !important;
+    //   }
+    // }
 
     &.suite > div > .runnable-wrapper {
       .runnable-title {
@@ -227,6 +186,11 @@
     &.test.runnable-passed {
       .runnable-state {
         @include runnable-state-passed;
+      }
+      &.muted {
+        .runnable-wrapper,.runnable-instruments {
+          border-left: 5px solid lighten($pass, 40%);
+        }
       }
     }
 
@@ -268,6 +232,18 @@
     }
   }
 
+  .runnable .title-badge {
+    padding: 1px 4px;
+    background-color: rgb(99, 99, 99);
+    color: white;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 10px;
+    margin-right: 4px;
+    text-transform: uppercase;
+
+  }
+
   .runnable-instruments {
     border-left: 5px solid transparent;
     padding-bottom: 5px;
@@ -304,6 +280,7 @@
 
   .runnable-controls {
     float: right;
+    overflow: hidden;
 
     label {
       padding: 2px 4px;
@@ -348,6 +325,11 @@
         .runnable-title {
           flex-grow: 1;
           padding-right: 10px;
+        }
+
+        .runnable-controls {
+          justify-self: flex-end;
+          min-width: 20px;
         }
       }
     }
@@ -493,6 +475,7 @@
     }
   }
 }
+
 
 .reporter.multiSpecs {
   overflow-y: auto;

@@ -19,6 +19,7 @@ export default class Attempt {
   // TODO: make this an enum with states: 'QUEUED, ACTIVE, INACTIVE'
   @observable isActive: boolean | null = null
   @observable routes: Route[] = []
+  @observable muted: TestProps['muted']
   @observable _state?: TestState | null = null
   @observable _invocationCount: number = 0
   @observable invocationDetails?: FileDetails
@@ -46,6 +47,7 @@ export default class Attempt {
     this.id = props.currentRetry || 0
     this.test = test
     this._state = props.state
+    this.muted = props.muted
     this.err.update(props.err)
 
     this.invocationDetails = props.invocationDetails
@@ -109,11 +111,15 @@ export default class Attempt {
     }
   }
 
-  updateLog (props: LogProps) {
+  @action updateLog (props: LogProps) {
     const log = this._logs[props.id]
 
     if (log) {
       log.update(props)
+
+      if (log.state === 'failed') {
+        this._state = 'failed'
+      }
     }
   }
 
@@ -144,6 +150,10 @@ export default class Attempt {
   @action update (props: UpdatableTestProps) {
     if (props.state) {
       this._state = props.state
+    }
+
+    if (props.muted) {
+      this.muted = props.muted
     }
 
     this.err.update(props.err)
