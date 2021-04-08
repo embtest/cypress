@@ -75,6 +75,11 @@ export const options = [
     defaultValue: 60000,
     validation: v.isNumber,
   }, {
+    name: 'experimentalComponentTesting',
+    defaultValue: false,
+    validation: v.isBoolean,
+    isExperimental: true,
+  }, {
     name: 'experimentalFetchPolyfill',
     defaultValue: false,
     validation: v.isBoolean,
@@ -131,6 +136,10 @@ export const options = [
     defaultValue: [],
     isInternal: true,
   }, {
+    name: 'keystrokeDelay',
+    defaultValue: 10,
+    validation: v.isNumberOrFalse,
+  }, {
     name: 'morgan',
     defaultValue: true,
     isInternal: true,
@@ -167,9 +176,6 @@ export const options = [
     name: 'projectId',
     defaultValue: null,
     validation: v.isString,
-  }, {
-    name: 'redirectionLimit',
-    defaultValue: 20,
   }, {
     name: 'reporter',
     defaultValue: 'spec',
@@ -302,10 +308,6 @@ export const breakingOptions = [
     name: 'blacklistHosts',
     errorKey: 'RENAMED_CONFIG_OPTION',
     newName: 'blockHosts',
-  }, {
-    name: 'experimentalComponentTesting',
-    errorKey: 'EXPERIMENTAL_COMPONENT_TESTING_REMOVED',
-    isWarning: false,
   }, {
     name: 'experimentalGetCookiesSameSite',
     errorKey: 'EXPERIMENTAL_SAMESITE_REMOVED',
