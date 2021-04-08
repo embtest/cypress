@@ -4,22 +4,22 @@ import { computed, observable } from 'mobx'
 
 import { FileDetails } from '@packages/ui-components'
 
-export interface ParsedStackMessageLine {
+interface ParsedStackMessageLine {
   message: string
   whitespace: string
 }
 
-export interface ParsedStackFileLine extends FileDetails {
+interface ParsedStackFileLine extends FileDetails {
   fileUrl: string
   function: string
   whitespace: string
 }
 
-export type ParsedStackLine = ParsedStackMessageLine | ParsedStackFileLine
+type ParsedStackLine = ParsedStackMessageLine & ParsedStackFileLine
 
 export interface CodeFrame extends FileDetails {
   frame: string
-  language?: string | null
+  language: string
 }
 
 export interface ErrProps {
@@ -31,14 +31,16 @@ export interface ErrProps {
   docsUrl: string | string[]
   templateType: string
   codeFrame: CodeFrame
+  diff? : string
 }
 
 export default class Err {
   @observable name = ''
   @observable message = ''
+  @observable diff = ''
   @observable stack = ''
   @observable sourceMappedStack = ''
-  @observable.ref parsedStack: ParsedStackLine[] = []
+  @observable.ref parsedStack = [] as ParsedStackLine[]
   @observable docsUrl = '' as string | string[]
   @observable templateType = ''
   // @ts-ignore
@@ -67,5 +69,6 @@ export default class Err {
     if (props.parsedStack) this.parsedStack = props.parsedStack
     if (props.templateType) this.templateType = props.templateType
     if (props.codeFrame) this.codeFrame = props.codeFrame
+    if (props.diff) this.diff = props.diff
   }
 }

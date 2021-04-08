@@ -1,5 +1,6 @@
 const _ = require('lodash')
 const path = require('path')
+const stripAnsi = require('strip-ansi')
 const stackUtils = require('./util/stack_utils')
 // mocha-* is used to allow us to have later versions of mocha specified in devDependencies
 // and prevents accidently upgrading this one
@@ -8,6 +9,7 @@ const Mocha = require('mocha-7.0.1')
 const mochaReporters = require('mocha-7.0.1/lib/reporters')
 const mochaCreateStatsCollector = require('mocha-7.0.1/lib/stats-collector')
 const mochaColor = mochaReporters.Base.color
+const mochaUseColors = mochaReporters.Base.useColors
 
 const debug = require('debug')('cypress:server:reporter')
 const Promise = require('bluebird')
@@ -131,17 +133,6 @@ const toMochaProps = (testProps) => {
   })
 }
 
-const toAttemptProps = (runnable) => {
-  return _.pick(runnable, [
-    'err',
-    'state',
-    'timings',
-    'failedFromHookId',
-    'wallClockStartedAt',
-    'wallClockDuration',
-  ])
-}
-
 const mergeRunnable = (eventName) => {
   return (function (testProps, runnables) {
     toMochaProps(testProps)
@@ -154,7 +145,7 @@ const mergeRunnable = (eventName) => {
         const prevAttempts = runnable.prevAttempts || []
 
         delete runnable.prevAttempts
-        const prevAttempt = toAttemptProps(runnable)
+        const prevAttempt = _.cloneDeep(runnable)
 
         delete runnable.failedFromHookId
         delete runnable.err
@@ -189,6 +180,18 @@ const mergeErr = function (runnable, runnables, stats) {
   let test = runnables[runnable.id]
 
   test.err = runnable.err
+
+  test.err.stack = stackUtils.stackWithoutMessage(test.err.stack)
+
+  // TODO: clean this up, what to do about custom reporters
+  const diff = runnable.err.diff
+
+  if (diff) {
+    test.err.message = `${test.err.message}${mochaUseColors ? diff : stripAnsi(diff)}`
+  }
+
+  test.err.message = `${test.err.name}: ${test.err.message}`
+
   test.state = 'failed'
 
   if (runnable.type === 'hook') {
@@ -372,8 +375,7 @@ class Reporter {
         const err = attempt.err && {
           name: attempt.err.name,
           message: attempt.err.message,
-          stack: stackUtils.stackWithoutMessage(attempt.err.stack),
-          codeFrame: attempt.err.codeFrame,
+          stack: attempt.err.stack,
         }
 
         return {
@@ -408,16 +410,9 @@ class Reporter {
   }
 
   results () {
-    const _tests = _
+    const tests = _
     .chain(this.runnables)
     .filter({ type: 'test' })
-
-    const tests = _tests
-    .map(this.normalizeTest)
-    .value()
-
-    const testsWithoutMuted = _tests
-    .filter((test) => !test.muted)
     .map(this.normalizeTest)
     .value()
 
@@ -442,11 +437,11 @@ class Reporter {
     }
 
     this.stats.suites = suites.length
-    this.stats.tests = testsWithoutMuted.length
-    this.stats.passes = _.filter(testsWithoutMuted, { state: 'passed' }).length
-    this.stats.pending = _.filter(testsWithoutMuted, { state: 'pending' }).length
-    this.stats.skipped = _.filter(testsWithoutMuted, { state: 'skipped' }).length
-    this.stats.failures = _.filter(testsWithoutMuted, { state: 'failed' }).length
+    this.stats.tests = tests.length
+    this.stats.passes = _.filter(tests, { state: 'passed' }).length
+    this.stats.pending = _.filter(tests, { state: 'pending' }).length
+    this.stats.skipped = _.filter(tests, { state: 'skipped' }).length
+    this.stats.failures = _.filter(tests, { state: 'failed' }).length
 
     // return an object of results
     return {

@@ -59,15 +59,6 @@
     border-left: 1px dotted #DDD;
   }
 
-  .studio-err-wrapper {
-    display: none;
-    text-align: center;
-  }
-
-  &.studio-active .attempt-failed .studio-err-wrapper {
-    display: block;
-  }
-
   .runnable-err {
     border-left: 2px solid $fail;
     background-color: $err-background;
@@ -122,6 +113,13 @@
       color: $err-text;
       font-weight: bold;
     }
+  }
+  
+  .runnable-err-diff {
+    background-color: unset;
+    border: none;
+    line-height: 1.4;
+    padding: 0;
   }
 
   .runnable-err-stack-expander {

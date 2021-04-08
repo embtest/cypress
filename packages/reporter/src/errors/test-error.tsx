@@ -11,6 +11,15 @@ import events from '../lib/events'
 import FlashOnClick from '../lib/flash-on-click'
 import { onEnterOrSpace } from '../lib/util'
 import Attempt from '../attempts/attempt-model'
+const ansiToHtml = require('ansi-to-html')
+
+const convert = new ansiToHtml({
+  fg: '#000',
+  bg: '#fff',
+  newline: false,
+  escapeXML: true,
+  stream: false,
+})
 
 interface DocsUrlProps {
   url: string | string[]
@@ -32,6 +41,7 @@ const DocsUrl = ({ url }: DocsUrlProps) => {
 
 interface TestErrorProps {
   model: Attempt
+  isTestError?: boolean
 }
 
 const TestError = observer((props: TestErrorProps) => {
@@ -71,6 +81,7 @@ const TestError = observer((props: TestErrorProps) => {
           <span dangerouslySetInnerHTML={{ __html: formattedMessage(err.message) }} />
           <DocsUrl url={err.docsUrl} />
         </div>
+        {Boolean(err.diff) && <pre className='runnable-err-diff' dangerouslySetInnerHTML={{ __html: convert.toHtml(err.diff) }}></pre>}
         {codeFrame && <ErrorCodeFrame codeFrame={codeFrame} />}
         {err.stack &&
           <Collapsible
