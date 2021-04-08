@@ -6,19 +6,13 @@ import ipc from '../lib/ipc'
 
 const openHelp = (e) => {
   e.preventDefault()
-  ipc.externalOpen({
-    url: 'https://on.cypress.io/node-version',
-    params: {
-      utm_medium: 'Settings Tab',
-      utm_campaign: 'Proxy Settings',
-    },
-  })
+  ipc.externalOpen('https://on.cypress.io/node-version')
 }
 
 const renderLearnMore = () => {
   return (
     <a href='#' className='learn-more' onClick={openHelp}>
-      <i className='fas fa-info-circle' /> Learn more
+      <i className='fas fa-info-circle'></i> Learn more
     </a>
   )
 }
@@ -86,13 +80,15 @@ const NodeVersion = observer(({ project }) => {
               </a> to <code>system</code> in your configuration.
             </div>
         }{' '}
-        <div className='well text-muted'>
-          This Node.js version is used to:
-          <ul>
-            <li>Build files in the {formatIntegrationFolder()} folder.</li>
-            <li>Build files in the <code>cypress/support</code> folder.</li>
-            <li>Execute code in the {formatPluginsFile() ? formatPluginsFile() : 'plugins'} file.</li>
-          </ul>
+        <div className='card text-muted'>
+          <div className='card-body'>
+            This Node.js version is used to:
+            <ul>
+              <li>Build files in the {formatIntegrationFolder()} folder.</li>
+              <li>Build files in the <code>cypress/support</code> folder.</li>
+              <li>Execute code in the {formatPluginsFile() ? formatPluginsFile() : 'plugins'} file.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

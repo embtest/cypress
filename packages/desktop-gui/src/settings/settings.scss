@@ -10,7 +10,7 @@
   }
 
   .node-version {
-    .well {
+    .card {
       margin-top: 20px;
       border-radius: 5px;
     }
@@ -85,7 +85,7 @@
 
     .key-value-pair-value {
       margin-left: 2px;
-      display: inline-flex;
+      display: inline-block;
       line-height: 1;
       padding: 2px;
       border-bottom: 1px solid transparent
@@ -211,7 +211,7 @@
     margin-bottom: 5px;
   }
 
-  .empty-well {
+  .empty-card {
     margin: 10px 0;
 
     button {

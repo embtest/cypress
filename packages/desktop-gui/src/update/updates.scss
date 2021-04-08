@@ -1,41 +1,11 @@
 .update-modal.os-dialog {
-  background: #fff;
-  padding: 0;
 
   a:hover {
     cursor: pointer !important;
   }
 
-  header {
-    border-bottom: solid 1px #E1E2E4;
-    padding: 1em 2em 0.4em;
-
-    i {
-      margin-right: 0.4rem;
-    }
-  }
-
-  .close {
-    border-radius: 3px;
-    font-size: 2.2rem;
-    padding: 0.5rem;
-    margin-right: 1.4rem;
-    margin-top: 1rem;
-
-    i {
-      width: 1em;
-    }
-
-    &:hover,
-    &:focus {
-      background: #E1E2E4;
-      color: #4D4D64;
-    }
-  }
-
-  section {
+  .modal-header {
     color: #505050;
-    padding: 1em 2em;
   }
 
   ol {
@@ -43,27 +13,21 @@
 
     li {
       list-style: none;
-      margin: 1.7rem 0;
+      margin: 1rem 0;
 
       span {
         display: block;
-        margin: 1.2rem 0;
+        margin: 0.875rem 0;
 
         &:last-child {
-          margin-top: 1.7rem;
+          margin-top: 1rem;
         }
       }
     }
   }
 
   p {
-    margin: 0 0 1.7rem;
-  }
-
-  .project-mode-instructions {
-    ol li:last-child {
-      margin-top: 2.2rem;
-    }
+    margin: 0 0 1rem;
   }
 
   .global-mode-instructions {
@@ -102,7 +66,7 @@
   }
 
   a > code {
-    color: $brand-primary;
+    color: var(--brand-primary);
 
     &:hover,
     &:focus {

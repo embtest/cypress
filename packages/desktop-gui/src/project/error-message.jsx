@@ -99,12 +99,12 @@ class ErrorMessage extends Component {
             {err.stack2 && (
               <details className='stacktrace'>
                 <summary>Stack trace</summary>
-                <pre>{err.stack2}</pre>
+                <pre className="p-2">{err.stack2}</pre>
               </details>
             )}
           </span>
           <button
-            className='btn btn-default btn-sm'
+            className='btn btn-secondary btn-sm'
             onClick={() => {
               _copyErrorDetails(err)
             }}
@@ -113,7 +113,7 @@ class ErrorMessage extends Component {
             Copy to Clipboard
           </button>
           <button
-            className='btn btn-default btn-sm'
+            className='btn btn-secondary btn-sm'
             onClick={this.props.onTryAgain}
           >
             <i className='fas fa-sync-alt'></i>{' '}

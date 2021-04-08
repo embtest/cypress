@@ -19,17 +19,11 @@ const openDashboardProjectSettings = (project) => (e) => {
 
 const openRecordKeyGuide = (e) => {
   e.preventDefault()
-  ipc.externalOpen({
-    url: 'https://on.cypress.io/what-is-a-record-key',
-    params: {
-      utm_medium: 'Settings Tab',
-      utm_campaign: 'Record Key',
-    },
-  })
+  ipc.externalOpen('https://on.cypress.io/what-is-a-record-key')
 }
 
 const showLogin = () => {
-  authStore.openLogin(null, 'Settings Tab')
+  authStore.openLogin()
 }
 
 @observer
@@ -81,7 +75,7 @@ class RecordKey extends Component {
     return (
       <div>
         <a href='#' className='learn-more' onClick={openRecordKeyGuide}>
-          <i className='fas fa-info-circle' /> Learn more
+          <i className='fas fa-info-circle'></i> Learn more
         </a>
         <p className='text-muted'>
           A Record Key sends your failing tests, screenshots, and videos to your{' '}
@@ -97,13 +91,13 @@ class RecordKey extends Component {
   _key () {
     if (!authStore.isAuthenticated) {
       return (
-        <p className='empty-well'>
+        <p className='empty-card'>
           You must be logged in to view the record key.<br />
           <button
             className='btn btn-primary'
             onClick={showLogin}
           >
-            <i className='fas fa-user' />{' '}
+            <i className='fas fa-user'></i>{' '}
             Log In
           </button>
         </p>
@@ -113,7 +107,7 @@ class RecordKey extends Component {
     if (this.isLoading) {
       return (
         <p className='loading-record-keys'>
-          <i className='fas fa-spinner fa-spin' />{' '}
+          <i className='fas fa-spinner fa-spin'></i>{' '}
           Loading Keys...
         </p>
       )
@@ -121,7 +115,7 @@ class RecordKey extends Component {
 
     if (!this.key) {
       return (
-        <p className='empty-well'>
+        <p className='empty-card'>
           This project has no record keys. <a href='#' onClick={openDashboardProjectSettings(this.props.project)}>Create one</a> on your Dashboard.
         </p>
       )
@@ -143,14 +137,14 @@ class RecordKey extends Component {
                 placement='top'
                 className='cy-tooltip'
               >
-                <i className='fas fa-clipboard' />
+                <i className='fas fa-clipboard'></i>
               </Tooltip>
             </a>
           </pre>
         </p>
         <p className='text-muted manage-btn'>
           <a href='#' onClick={openDashboardProjectSettings(this.props.project)}>
-            <i className='fas fa-key' /> You can change this key in the Dashboard
+            <i className='fas fa-key'></i> You can change this key in the Dashboard
           </a>
         </p>
       </div>

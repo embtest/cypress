@@ -79,7 +79,7 @@ i.blue {
 }
 
 i.red {
-  color: $red-primary;
+  color: var(--red-primary);
 }
 
 i.orange {
@@ -101,7 +101,7 @@ i.timedOut { color: #F5A327;}
   border: 1px solid #eee;
   padding: 15px 25px;
 
-  .empty-well {
+  .empty-card {
     background-color: white;
   }
 
@@ -138,8 +138,13 @@ pre.line-nums {
 }
 
 pre.copy-to-clipboard {
+  padding: 9.5px;
   & > span, & > code {
     padding-right: 15px;
+  }
+
+  & > code {
+    background-color: transparent;
   }
   
   .action-copy {

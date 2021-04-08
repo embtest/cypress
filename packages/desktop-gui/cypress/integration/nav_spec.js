@@ -25,18 +25,18 @@ describe('Navigation', function () {
 
   it('displays and opens link to docs on click', () => {
     cy.get('nav').find('.fa-graduation-cap').click().then(function () {
-      expect(this.ipc.externalOpen).to.be.calledWithMatch({ url: 'https://on.cypress.io/docs' })
+      expect(this.ipc.externalOpen).to.be.calledWith('https://on.cypress.io')
     })
   })
 
   it('displays and opens link to support on click', () => {
     cy.get('nav').find('.fa-question-circle').click().then(function () {
-      expect(this.ipc.externalOpen).to.be.calledWithMatch({ url: 'https://on.cypress.io/support' })
+      expect(this.ipc.externalOpen).to.be.calledWith('https://on.cypress.io/support')
     })
   })
 
   it('shows loading spinner where user or \'Log in\' will be', () => {
-    cy.get('.main-nav li:last .fa-spinner')
+    cy.get('#main-nav li:last .fa-spinner')
   })
 
   context('without a current user', function () {

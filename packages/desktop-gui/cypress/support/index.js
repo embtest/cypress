@@ -4,6 +4,7 @@ require('@packages/ui-components/cypress/support/customPercyCommand')({
   },
 })
 
+require('cypress-react-unit-test/dist/hooks')
 require('cypress-real-events/support')
 
 const BluebirdPromise = require('bluebird')
@@ -37,7 +38,7 @@ Cypress.Commands.add('visitIndex', (options = {}) => {
 })
 
 Cypress.Commands.add('shouldBeOnIntro', () => {
-  cy.get('.main-nav .logo')
+  cy.get('#main-nav .navbar-brand')
 })
 
 Cypress.Commands.add('shouldBeOnProjectSpecs', () => {
@@ -53,7 +54,7 @@ Cypress.Commands.add('logOut', () => {
 })
 
 Cypress.Commands.add('shouldBeLoggedOut', () => {
-  cy.contains('.main-nav a', 'Log In')
+  cy.contains('#log-in', 'Log In')
 })
 
 Cypress.Commands.add('setAppStore', (options = {}) => {
@@ -65,10 +66,4 @@ Cypress.Commands.add('setAppStore', (options = {}) => {
 
     win.AppStore.set(options)
   })
-})
-
-Cypress.Commands.add('ensureAnimationsFinished', () => {
-  cy.get('.rc-collapse-content')
-  .should('not.have.class', 'rc-collapse-anim')
-  .should('have.attr', 'style', '')
 })

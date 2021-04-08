@@ -33,7 +33,7 @@ describe('Footer', () => {
 
     it('opens link to changelog on click of changelog', () => {
       cy.contains('button', 'Changelog').click().then(() => {
-        expect(ipc.externalOpen).to.be.calledWithMatch({ url: 'https://on.cypress.io/changelog' })
+        expect(ipc.externalOpen).to.be.calledWith('https://on.cypress.io/changelog?source=dgui_footer')
       })
     })
 
@@ -67,11 +67,6 @@ describe('Footer', () => {
 
     it('shows update indicator', () => {
       cy.get('.update-indicator').should('be.visible')
-      cy.wrap(ipc.updaterCheck).should('be.calledOnceWith', {
-        initialLaunch: true,
-        testingType: 'e2e',
-      })
-
       cy.percySnapshot()
     })
 
@@ -86,13 +81,13 @@ describe('Footer', () => {
 
     it('closes modal after clicking close', () => {
       cy.get('.version').click()
-      cy.get('.update-modal .close').click()
+      cy.get('.update-modal .btn-close').click()
       cy.get('.update-modal').should('not.exist')
     })
 
     it('blurs version button after clicking', () => {
       cy.get('.version').click().should('not.be.focused')
-      cy.get('.update-modal .close').click()
+      cy.get('.update-modal .btn-close').click()
       cy.percySnapshot()
     })
   })

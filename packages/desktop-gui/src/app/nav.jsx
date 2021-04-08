@@ -14,26 +14,23 @@ import { Link, routes } from '../lib/routing'
 export default class Nav extends Component {
   render () {
     return (
-      <nav className='main-nav navbar navbar-inverse'>
-        <ul className='nav'>
-          <li>
-            {this._leftNav()}
-          </li>
-        </ul>
-        <div className='spacer' />
-        <ul className='nav'>
-          <li>
-            <a onClick={this._openSupport} href='#'>
-              <i className='fas fa-question-circle' /> Support
-            </a>
-          </li>
-          <li>
-            <a onClick={this._openDocs} href='#'>
-              <i className='fas fa-graduation-cap' /> Docs
-            </a>
-          </li>
-          {this._userStateButton()}
-        </ul>
+      <nav id="main-nav" className='navbar navbar-dark bg-dark navbar-expand'>
+        <div className="container-fluid">
+          {this._leftNav()}
+          <ul className='navbar-nav'>
+            <li className="nav-item">
+              <a className="nav-link" onClick={this._openSupport} href='#'>
+                <i className='fas fa-question-circle'></i> Support
+              </a>
+            </li>
+            <li className="nav-item">
+              <a className="nav-link" onClick={this._openDocs} href='#'>
+                <i className='fas fa-graduation-cap'></i> Docs
+              </a>
+            </li>
+            {this._userStateButton()}
+          </ul>
+        </div>
       </nav>
     )
   }
@@ -43,41 +40,41 @@ export default class Nav extends Component {
 
     // project mode
     if (!appStore.isGlobalMode) {
-      return <div>{project && project.displayName}</div>
+      return <div className='navbar-brand'>{project && project.displayName}</div>
     }
 
     // global mode, on project page
     if (appStore.isGlobalMode && project) {
       return (
-        <Link to={routes.intro()}>
-          <i className='fas fa-chevron-left' /> Back
+        <Link className="navbar-brand" to={routes.intro()}>
+          <i className='fas fa-chevron-left'></i> Back
         </Link>
       )
     }
 
     // global mode, on intro page
     return (
-      <div className='logo'>
-        <img src={require('@cypress/icons/dist/logo/cypress-inverse.png')} alt="Cypress" />
-      </div>
+      <a className='navbar-brand'>
+        <img src={require('@cypress/icons/dist/logo/cypress-inverse.png')} style={{ height: 30 }} />
+      </a>
     )
   }
 
   _userStateButton = () => {
     if (authStore.isLoading) {
       return (
-        <li>
-          <div>
+        <li className="nav-item">
+          <a className="nav-link">
             <i className='fas fa-user' /> <i className='fas fa-spinner fa-spin' />
-          </div>
+          </a>
         </li>
       )
     }
 
     if (!authStore.isAuthenticated) {
       return (
-        <li>
-          <a onClick={this._showLogin}>
+        <li className="nav-item">
+          <a id="log-in" className="nav-link" onClick={this._showLogin}>
             <i className='fas fa-user' /> Log In
           </a>
         </li>
@@ -85,14 +82,16 @@ export default class Nav extends Component {
     }
 
     return (
-      <Dropdown
-        className='user-dropdown'
-        chosen={{ id: 'user' }}
-        others={[{ id: 'logout' }]}
-        onSelect={this._select}
-        renderItem={this._item}
-        keyProperty='id'
-      />
+      <li className="nav-item">
+        <Dropdown
+          className='user-dropdown nav-link'
+          chosen={{ id: 'user' }}
+          others={[{ id: 'logout' }]}
+          onSelect={this._select}
+          renderItem={this._item}
+          keyProperty='id'
+        />
+      </li>
     )
   }
 
@@ -113,7 +112,7 @@ export default class Nav extends Component {
 
     return (
       <span>
-        <i className='fas fa-sign-out-alt' />{' '}
+        <i className='fas fa-sign-out-alt'></i>{' '}
         Log Out
       </span>
     )
@@ -126,28 +125,16 @@ export default class Nav extends Component {
   }
 
   _showLogin () {
-    authStore.openLogin(null, 'Nav')
+    authStore.openLogin()
   }
 
   _openDocs (e) {
     e.preventDefault()
-    ipc.externalOpen({
-      url: 'https://on.cypress.io/docs',
-      params: {
-        utm_medium: 'Nav',
-        utm_campaign: 'Docs',
-      },
-    })
+    ipc.externalOpen('https://on.cypress.io')
   }
 
   _openSupport (e) {
     e.preventDefault()
-    ipc.externalOpen({
-      url: 'https://on.cypress.io/support',
-      params: {
-        utm_medium: 'Nav',
-        utm_campaign: 'Support',
-      },
-    })
+    ipc.externalOpen('https://on.cypress.io/support')
   }
 }

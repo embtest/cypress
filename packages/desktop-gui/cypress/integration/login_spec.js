@@ -49,7 +49,7 @@ describe('Login', function () {
     })
 
     it('has dashboard login button', function () {
-      cy.get('.login').contains('button', 'Log In to Dashboard')
+      cy.get('#login').contains('button', 'Log In to Dashboard')
 
       cy.percySnapshot()
     })
@@ -62,7 +62,7 @@ describe('Login', function () {
 
     describe('click Log In to Dashboard', function () {
       beforeEach(function () {
-        cy.get('.login').contains('button', 'Log In to Dashboard').as('loginBtn').click()
+        cy.get('#login').contains('button', 'Log In to Dashboard').as('loginBtn').click()
       })
 
       it('triggers ipc "begin:auth" on click', function () {
@@ -73,8 +73,7 @@ describe('Login', function () {
 
       it('passes utm code when it triggers ipc "begin:auth"', function () {
         cy.then(function () {
-          // we match nav in this test since the outer beforeEach initializes the modal from the navbar
-          expect(this.ipc.beginAuth).to.be.calledWith('Nav')
+          expect(this.ipc.beginAuth).to.be.calledWith('Nav Login Button')
         })
       })
 
@@ -161,7 +160,7 @@ describe('Login', function () {
                   cy.get('.user-dropdown .dropdown-chosen').contains('Jane').click()
 
                   cy.contains('Log Out').click()
-                  cy.get('.nav').contains('Log In')
+                  cy.get('.navbar-nav').contains('Log In')
                 })
 
                 it('calls log:out', function () {
@@ -177,7 +176,7 @@ describe('Login', function () {
                   cy.contains('Log Out').click()
                   cy.contains('Log In').click()
 
-                  cy.get('.login button').eq(1)
+                  cy.get('#login button').eq(1)
                   .should('not.be.disabled').invoke('text')
                   .should('include', 'Log In to Dashboard')
                 })
@@ -232,7 +231,7 @@ describe('Login', function () {
               message: 'foo',
             })
 
-            cy.get('.login-content .btn-login')
+            cy.get('#login .btn-login')
             .should('be.disabled')
             .should('have.text', ' Could not open browser.')
 
@@ -245,7 +244,7 @@ describe('Login', function () {
               type: 'warning',
             })
 
-            cy.get('.login-content .message pre').click()
+            cy.get('#login .message pre').click()
             cy.document().then(function ($doc) {
               const selection = $doc.getSelection().toString()
 
@@ -326,13 +325,13 @@ describe('Login', function () {
       it('shows login on success', function () {
         this.pingApiServerAgain.resolve()
 
-        cy.get('.login').contains('button', 'Log In to Dashboard')
+        cy.get('#login').contains('button', 'Log In to Dashboard')
       })
     })
 
     describe('api help link', () => {
       it('goes to external api help link', () => {
-        cy.get('.login').contains('Learn more').click().then(function () {
+        cy.get('#login').contains('Learn more').click().then(function () {
           expect(this.ipc.externalOpen).to.be.calledWith('https://on.cypress.io/help-connect-to-api')
         })
       })
@@ -340,14 +339,14 @@ describe('Login', function () {
 
     describe('closing login', function () {
       beforeEach(() => {
-        cy.get('.login .close').click()
+        cy.get('#login .btn-close').click()
       })
 
       it('shows log in if connected and opened again', function () {
         this.pingApiServerAgain.resolve()
         cy.contains('Log In').click()
 
-        cy.get('.login').contains('button', 'Log In to Dashboard')
+        cy.get('#login').contains('button', 'Log In to Dashboard')
       })
     })
   })

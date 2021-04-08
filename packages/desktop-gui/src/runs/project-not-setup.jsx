@@ -1,12 +1,12 @@
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { observer } from 'mobx-react'
+import Modal from 'react-bootstrap4-modal'
 
 import { configFileFormatted } from '../lib/config-file-formatted'
-import SetupProject from './setup-project'
+import SetupProject from './setup-project-modal'
 import DashboardBanner from './dashboard-banner'
 import authStore from '../auth/auth-store'
-import { IconFailurePoint, IconSupercharge, IconFailAlerts } from './svg-icons'
 
 @observer
 export default class ProjectNotSetup extends Component {
@@ -15,28 +15,25 @@ export default class ProjectNotSetup extends Component {
   }
 
   state = {
-    setupProjectOpen: false,
-  }
-
-  componentDidUpdate () {
-    if (this.state.setupProjectOpen && !authStore.isAuthenticated) {
-      this._openLogin()
-      this.setState({ setupProjectOpen: false })
-    }
+    setupProjectModalOpen: false,
   }
 
   render () {
     return (
-      <div className="empty">
-        {
-          this.state.setupProjectOpen && authStore.isAuthenticated ?
-            this._projectSetup()
-            :
+      <div>
+        <div className="empty">
+          {
             this.props.isValid ?
-              this._getStartedWithCI()
-              :
-              this._invalidProject()
-        }
+              <div>{this._getStartedWithCI()}</div> :
+              <div>{this._invalidProject()}</div>
+          }
+        </div>
+        <Modal
+          visible={this.state.setupProjectModalOpen}
+          onClickBackdrop={this._hideSetupProjectModal}
+        >
+          {this._projectSetup()}
+        </Modal>
       </div>
     )
   }
@@ -44,34 +41,23 @@ export default class ProjectNotSetup extends Component {
   _getStartedWithCI () {
     return (
       <div className='empty-no-runs'>
-        <div>
-          <DashboardBanner/>
-          <h4>Connect to the Dashboard to see your recorded test results here!</h4>
-          <h5>Sign up and get started for free.</h5>
-          <button
-            className='btn btn-primary btn-wide'
-            onClick={this._showSetupProject}
-          >
-            Connect to Dashboard
-          </button>
+        <DashboardBanner/>
+        <h4>You could see test recordings here!</h4>
+        <div className='empty-no-runs-details'>
+          <h5>Connect to Cypress Dashboard for free:</h5>
+          <ul>
+            <li>Record test runs in CI and debug failed tests with ease</li>
+            <li>Understand the health of your tests with test analytics</li>
+            <li>Improve testing efficiency with parallelization, load balancing, and more</li>
+          </ul>
         </div>
-        <div className='what-is-dashboard'>
-          <h5>What is the Dashboard?</h5>
-          <div className='columns'>
-            <div className='column'>
-              <IconFailurePoint />
-              <span>See exact point of failure of tests running in CI.</span>
-            </div>
-            <div className='column'>
-              <IconSupercharge />
-              <span>Supercharge test times with parallelization.</span>
-            </div>
-            <div className='column'>
-              <IconFailAlerts />
-              <span>Get instant test failure alerts via Slack or GitHub.</span>
-            </div>
-          </div>
-        </div>
+        <button
+          className='btn btn-primary btn-wide'
+          onClick={this._showSetupProjectModal}
+        >
+          Connect to Dashboard
+        </button>
+        <p>After logging in, you'll see recorded test runs here and in your Cypress Dashboard.</p>
       </div>
     )
   }
@@ -80,7 +66,7 @@ export default class ProjectNotSetup extends Component {
     return (
       <div className='empty-runs-not-displayed'>
         <h4>
-          <i className='fas fa-exclamation-triangle errored' />{' '}
+          <i className='fas fa-exclamation-triangle errored'></i>{' '}
           Runs cannot be displayed
         </h4>
         <p>We were unable to find an existing project matching the <code>projectId</code> in your {configFileFormatted(this.props.project.configFile)}.</p>
@@ -88,52 +74,57 @@ export default class ProjectNotSetup extends Component {
         <p>- or -</p>
         <button
           className='btn btn-warning'
-          onClick={this._showSetupProject}
+          onClick={this._showSetupProjectModal}
         >
-          <i className='fas fa-wrench' />{' '}
-          Set up a project
+          <i className='fas fa-wrench'></i>{' '}
+          Set up a new project
         </button>
         <p>
-          <small>You can link to an existing project or create a new project.</small>
+          <small>The new project will have no previous run data.</small>
         </p>
       </div>
     )
   }
 
   _projectSetup () {
+    if (!this.state.setupProjectModalOpen) return null
+
+    if (!this.props.isAuthenticated) {
+      authStore.openLogin((isAuthenticated) => {
+        if (!isAuthenticated) {
+          // auth was canceled, cancel project setup too
+          this.setState({ setupProjectModalOpen: false })
+        }
+      })
+
+      return null
+    }
+
+    if (this.props.isShowingLogin) {
+      // login dialog still open, wait for it to close before proceeding
+      return null
+    }
+
     return (
       <SetupProject
         project={this.props.project}
         onSetup={this._setupProject}
-        onClose={this._hideSetupProject}
+        onClose={this._hideSetupProjectModal}
       />
     )
   }
 
-  _hideSetupProject = () => {
-    this.setState({ setupProjectOpen: false })
+  _hideSetupProjectModal = () => {
+    this.setState({ setupProjectModalOpen: false })
   }
 
-  _showSetupProject = (e) => {
+  _showSetupProjectModal = (e) => {
     e.preventDefault()
-
-    if (!this.props.isAuthenticated) {
-      this._openLogin()
-    } else {
-      this.setState({ setupProjectOpen: true })
-    }
+    this.setState({ setupProjectModalOpen: true })
   }
 
   _setupProject = (projectDetails) => {
-    this._hideSetupProject()
+    this._hideSetupProjectModal()
     this.props.onSetup(projectDetails)
-  }
-
-  _openLogin = () => {
-    authStore.openLogin((isAuthenticated) => {
-      // if auth was successful, proceed
-      // auth was canceled, cancel project setup too
-      this.setState({ setupProjectOpen: isAuthenticated })
-    })
   }
 }

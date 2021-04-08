@@ -17,7 +17,7 @@ html, body {
 }
 
 a {
-  color: $brand-primary;
+  color: var(--brand-primary);
   cursor: pointer;
 
   &:hover, &:focus, &:active {
@@ -36,6 +36,10 @@ form {
   overflow: auto;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    font-weight: normal;
+}
+
 h3, h4 {
   font-family: $font-title;
 }
@@ -46,9 +50,7 @@ h5 {
 
 h4 {
   font-size: 20px;
-  margin-bottom: 15px;
 }
-
 
 legend {
   font-size: $font-size;

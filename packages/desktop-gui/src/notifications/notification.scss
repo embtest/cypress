@@ -1,6 +1,5 @@
 .notification {
-  bottom: 4.8rem;
-  padding-left: 1.2rem;
+  bottom: 3rem;
   padding-right: 1.2rem;
   position: fixed;
   right: 0;
@@ -11,18 +10,18 @@
     background: #252831;
     border-radius: 3px;
     display: flex;
-    padding: 0.8rem 1.2rem 0.8rem 1.5rem;
+    padding: 0.8rem 1rem 0.8rem 1rem;
   }
 
   .content {
     align-items: center;
     color: #EFF0F3;
     display: flex;
-    font-size: 1.3rem;
+    font-size: 0.875rem;
 
     i {
       color: #5393E9;
-      font-size: 2.2rem;
+      font-size: 1rem;
       margin-right: 1rem;
     }
 
@@ -41,8 +40,8 @@
     background: none;
     border: none;
     color: #8A8C92;
-    font-size: 2.4rem;
-    margin-left: 3rem;
+    font-size: 1rem;
+    margin-left: 1rem;
     padding: 0 0.4rem;
 
     &:hover,
@@ -97,10 +96,4 @@
   bottom: 16rem;
   right: 1rem;
   z-index: 9999;
-}
-
-.new-spec-warning {
-  .content i {
-    color: #F5A327;
-  }
 }
