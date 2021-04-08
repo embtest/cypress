@@ -88,7 +88,6 @@ const parseVariableOpts = (fnArgs, args) => {
 }
 
 const descriptions = {
-  bail: 'exit the test suite immediately upon failing a test',
   browserOpenMode: 'path to a custom browser to be added to the list of available browsers in Cypress',
   browserRunMode: 'runs Cypress in the browser with the given name. if a filesystem path is supplied, Cypress will attempt to use the browser at that path.',
   cacheClear: 'delete all cached binaries',
@@ -110,7 +109,6 @@ const descriptions = {
   parallel: 'enables concurrent runs and automatic load balancing of specs across multiple machines or processes',
   port: 'runs Cypress on a specific port. overrides any value in cypress.json.',
   project: 'path to the project',
-  quiet: 'run quietly, using only the configured reporter',
   record: 'records the run. sends test results, screenshots and videos to your Cypress Dashboard.',
   reporter: 'runs a specific mocha reporter. pass a path to use a custom reporter. defaults to "spec"',
   reporterOptions: 'options for the mocha reporter. defaults to "null"',
@@ -127,6 +125,7 @@ const knownCommands = [
   'install',
   'open',
   'run',
+  'init',
   'verify',
   '-v',
   '--version',
@@ -220,7 +219,6 @@ module.exports = {
     .command('run')
     .usage('[options]')
     .description('Runs Cypress tests from the CLI without the GUI')
-    .option('--bail', text('bail'))
     .option('-b, --browser <browser-name-or-path>', text('browserRunMode'))
     .option('--ci-build-id <id>', text('ciBuildId'))
     .option('-c, --config <config>', text('config'))
@@ -234,7 +232,6 @@ module.exports = {
     .option('--parallel', text('parallel'))
     .option('-p, --port <port>', text('port'))
     .option('-P, --project <project-path>', text('project'))
-    .option('-q, --quiet', text('quiet'))
     .option('--record [bool]', text('record'), coerceFalse)
     .option('-r, --reporter <reporter>', text('reporter'))
     .option('-o, --reporter-options <reporter-options>', text('reporterOptions'))
@@ -266,6 +263,32 @@ module.exports = {
       debug('opening Cypress')
       require('./exec/open')
       .start(util.parseOpts(opts))
+      .catch(util.logErrorExit1)
+    })
+
+    program
+    .command('init')
+    .usage('[options]')
+    .description('Scaffold Cypress project')
+    .option('-y, --yes', 'skip all questions')
+    .option('-f, --force', 'alias of --yes')
+    .option('--no-fixtures', `don't generate fixtures folder`)
+    .option('--fixtures-path <path>', `path to the fixtures folder`)
+    .option('--no-support', `don't generate support file`)
+    .option('--support-path <path>', `path to the support file`)
+    .option('--no-plugins', `don't generate plugins file`)
+    .option('--plugins-path <path>', `path to the plugins file`)
+    .option('--integration-path <path>', `path to the integration folder`)
+    .option('--no-video', `doesn't capture a video of tests`)
+    .option('--example', `generate example files`)
+    .option('--typescript', 'generate examples, plugin, support in TypeScript')
+    .option('--ts', 'alias of --typescript')
+    .option('--no-eslint', `don't set up eslint-plugin-cypress`)
+    .option('--chai-friendly', `set up eslint-plugin-chai-friendly for you. it doesn't work if you didn't set up eslints`)
+    .option('--dev', text('dev'), coerceFalse)
+    .action((opts) => {
+      require('./exec/init')
+      .start(util.parseInitOpts(opts))
       .catch(util.logErrorExit1)
     })
 

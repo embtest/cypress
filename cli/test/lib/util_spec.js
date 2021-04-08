@@ -3,6 +3,7 @@ require('../spec_helper')
 const os = require('os')
 const tty = require('tty')
 const snapshot = require('../support/snapshot')
+const mockedEnv = require('mocked-env')
 const supportsColor = require('supports-color')
 const proxyquire = require('proxyquire')
 const hasha = require('hasha')
@@ -10,6 +11,9 @@ const la = require('lazy-ass')
 
 const util = require(`${lib}/util`)
 const logger = require(`${lib}/logger`)
+
+// https://github.com/cypress-io/cypress/issues/5431
+const expectedNodeOptions = `--max-http-header-size=${1024 * 1024} --http-parser=legacy`
 
 describe('util', () => {
   beforeEach(() => {
@@ -213,6 +217,7 @@ describe('util', () => {
         FORCE_COLOR: '1',
         DEBUG_COLORS: '1',
         MOCHA_COLORS: '1',
+        NODE_OPTIONS: expectedNodeOptions,
       })
 
       util.supportsColor.returns(false)
@@ -224,7 +229,46 @@ describe('util', () => {
         FORCE_STDERR_TTY: '0',
         FORCE_COLOR: '0',
         DEBUG_COLORS: '0',
+        NODE_OPTIONS: expectedNodeOptions,
       })
+    })
+  })
+
+  context('.getNodeOptions', () => {
+    let restoreEnv
+
+    afterEach(() => {
+      if (restoreEnv) {
+        restoreEnv()
+        restoreEnv = null
+      }
+    })
+
+    it('adds required NODE_OPTIONS', () => {
+      restoreEnv = mockedEnv({
+        NODE_OPTIONS: undefined,
+      })
+
+      expect(util.getNodeOptions({})).to.deep.eq({
+        NODE_OPTIONS: expectedNodeOptions,
+      })
+    })
+
+    it('includes existing NODE_OPTIONS', () => {
+      restoreEnv = mockedEnv({
+        NODE_OPTIONS: '--foo --bar',
+      })
+
+      expect(util.getNodeOptions({})).to.deep.eq({
+        NODE_OPTIONS: `${expectedNodeOptions} --foo --bar`,
+        ORIGINAL_NODE_OPTIONS: '--foo --bar',
+      })
+    })
+
+    it('does not return if dev is set and version < 12', () => {
+      expect(util.getNodeOptions({
+        dev: true,
+      }, 11)).to.be.undefined
     })
   })
 
@@ -437,22 +481,10 @@ describe('util', () => {
       expect(util.getEnv('CYPRESS_FOO')).to.eql('bar')
     })
 
-    it('prefers env var over .npmrc config even if it\'s an empty string', () => {
-      process.env.CYPRESS_FOO = ''
-      process.env.npm_config_CYPRESS_FOO = 'baz'
-      expect(util.getEnv('CYPRESS_FOO')).to.eql('')
-    })
-
     it('prefers .npmrc config over package config', () => {
       process.env.npm_package_config_CYPRESS_FOO = 'baz'
       process.env.npm_config_CYPRESS_FOO = 'bloop'
       expect(util.getEnv('CYPRESS_FOO')).to.eql('bloop')
-    })
-
-    it('prefers .npmrc config over package config even if it\'s an empty string', () => {
-      process.env.npm_package_config_CYPRESS_FOO = 'baz'
-      process.env.npm_config_CYPRESS_FOO = ''
-      expect(util.getEnv('CYPRESS_FOO')).to.eql('')
     })
 
     it('throws on non-string name', () => {
@@ -556,6 +588,51 @@ describe('util', () => {
 
       expect(result).to.deep.equal({
         ciBuildId: 'my ci build id',
+      })
+    })
+  })
+
+  context('parseInitOpts', () => {
+    it('passes normal options and strips unknown ones', () => {
+      const result = util.parseInitOpts({
+        unknownOptions: true,
+        force: true,
+        yes: true,
+        config: 'video=false',
+        fixtures: true,
+        fixturesPath: 'hello/world',
+        support: true,
+        supportPath: 'hi/world',
+        plugins: true,
+        pluginsPath: 'goodbye/this',
+        integrationPath: 'aloha/world',
+        video: true,
+        example: true,
+        typescript: true,
+        ts: true,
+        eslint: true,
+        chaiFriendly: true,
+        dev: true,
+      })
+
+      expect(result).to.deep.equal({
+        force: true,
+        yes: true,
+        config: 'video=false',
+        fixtures: true,
+        fixturesPath: 'hello/world',
+        support: true,
+        supportPath: 'hi/world',
+        plugins: true,
+        pluginsPath: 'goodbye/this',
+        integrationPath: 'aloha/world',
+        video: true,
+        example: true,
+        typescript: true,
+        ts: true,
+        eslint: true,
+        chaiFriendly: true,
+        dev: true,
       })
     })
   })

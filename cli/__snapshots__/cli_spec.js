@@ -62,7 +62,6 @@ exports['shows help for run --foo 1'] = `
   Runs Cypress tests from the CLI without the GUI
 
   Options:
-    --bail                                     exit the test suite immediately upon failing a test
     -b, --browser <browser-name-or-path>       runs Cypress in the browser with the given name. if a filesystem path is supplied, Cypress will attempt to use the browser at that path.
     --ci-build-id <id>                         the unique identifier for a run on your CI provider. typically a "BUILD_ID" env var. this value is automatically detected for most CI providers
     -c, --config <config>                      sets configuration values. separate multiple values with a comma. overrides any value in cypress.json.
@@ -76,7 +75,6 @@ exports['shows help for run --foo 1'] = `
     --parallel                                 enables concurrent runs and automatic load balancing of specs across multiple machines or processes
     -p, --port <port>                          runs Cypress on a specific port. overrides any value in cypress.json.
     -P, --project <project-path>               path to the project
-    -q, --quiet                                run quietly, using only the configured reporter
     --record [bool]                            records the run. sends test results, screenshots and videos to your Cypress Dashboard.
     -r, --reporter <reporter>                  runs a specific mocha reporter. pass a path to use a custom reporter. defaults to "spec"
     -o, --reporter-options <reporter-options>  options for the mocha reporter. defaults to "null"
@@ -202,6 +200,7 @@ exports['cli help command shows help 1'] = `
     version            prints Cypress version
     run [options]      Runs Cypress tests from the CLI without the GUI
     open [options]     Opens Cypress in the interactive GUI.
+    init [options]     Scaffold Cypress project
     install [options]  Installs the Cypress executable matching this package's
                        version
     verify [options]   Verifies that Cypress is installed correctly and
@@ -238,6 +237,7 @@ exports['cli help command shows help for -h 1'] = `
     version            prints Cypress version
     run [options]      Runs Cypress tests from the CLI without the GUI
     open [options]     Opens Cypress in the interactive GUI.
+    init [options]     Scaffold Cypress project
     install [options]  Installs the Cypress executable matching this package's
                        version
     verify [options]   Verifies that Cypress is installed correctly and
@@ -274,6 +274,7 @@ exports['cli help command shows help for --help 1'] = `
     version            prints Cypress version
     run [options]      Runs Cypress tests from the CLI without the GUI
     open [options]     Opens Cypress in the interactive GUI.
+    init [options]     Scaffold Cypress project
     install [options]  Installs the Cypress executable matching this package's
                        version
     verify [options]   Verifies that Cypress is installed correctly and
@@ -311,6 +312,7 @@ exports['cli unknown command shows usage and exits 1'] = `
     version            prints Cypress version
     run [options]      Runs Cypress tests from the CLI without the GUI
     open [options]     Opens Cypress in the interactive GUI.
+    init [options]     Scaffold Cypress project
     install [options]  Installs the Cypress executable matching this package's
                        version
     verify [options]   Verifies that Cypress is installed correctly and
@@ -417,6 +419,7 @@ exports['cli CYPRESS_INTERNAL_ENV allows and warns when staging environment 1'] 
     version            prints Cypress version
     run [options]      Runs Cypress tests from the CLI without the GUI
     open [options]     Opens Cypress in the interactive GUI.
+    init [options]     Scaffold Cypress project
     install [options]  Installs the Cypress executable matching this package's
                        version
     verify [options]   Verifies that Cypress is installed correctly and

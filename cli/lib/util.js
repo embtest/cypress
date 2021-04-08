@@ -191,7 +191,6 @@ const dequote = (str) => {
 
 const parseOpts = (opts) => {
   opts = _.pick(opts,
-    'bail',
     'browser',
     'cachePath',
     'cacheList',
@@ -215,7 +214,6 @@ const parseOpts = (opts) => {
     'parallel',
     'port',
     'project',
-    'quiet',
     'reporter',
     'reporterOptions',
     'record',
@@ -237,6 +235,27 @@ const parseOpts = (opts) => {
   debug('parsed cli options %o', cleanOpts)
 
   return cleanOpts
+}
+
+const parseInitOpts = (opts) => {
+  return _.pick(opts,
+    'force',
+    'yes',
+    'config',
+    'fixtures',
+    'fixturesPath',
+    'support',
+    'supportPath',
+    'plugins',
+    'pluginsPath',
+    'integrationPath',
+    'video',
+    'example',
+    'typescript',
+    'ts',
+    'eslint',
+    'chaiFriendly',
+    'dev')
 }
 
 /**
@@ -262,6 +281,7 @@ const getApplicationDataFolder = (...paths) => {
 const util = {
   normalizeModuleOptions,
   parseOpts,
+  parseInitOpts,
   isValidCypressInternalEnvValue,
   isNonProductionCypressInternalEnvValue,
   printNodeOptions,
