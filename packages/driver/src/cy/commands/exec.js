@@ -22,7 +22,6 @@ module.exports = (Commands, Cypress, cy) => {
 
         options._log = Cypress.log({
           message: _.truncate(cmd, { length: 25 }),
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return consoleOutput

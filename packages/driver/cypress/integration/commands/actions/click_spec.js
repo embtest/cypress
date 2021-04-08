@@ -8,7 +8,6 @@ const { getCommandLogWithText,
   shouldBeCalled,
   shouldBeCalledOnce,
   shouldNotBeCalled,
-  expectCaret,
 } = require('../../../support/utils')
 
 const fail = function (str) {
@@ -801,20 +800,53 @@ describe('src/cy/commands/actions/click', () => {
     it('places cursor at the end of [contenteditable]', () => {
       cy.get('[contenteditable]:first')
       .invoke('html', '<div><br></div>').click()
-      .then(expectCaret(0))
+      .then(($el) => {
+        const range = $el.get(0).ownerDocument.getSelection().getRangeAt(0)
+
+        expect(range.startContainer.outerHTML).to.eql('<div><br></div>')
+        expect(range.startOffset).to.eql(0)
+        expect(range.endContainer.outerHTML).to.eql('<div><br></div>')
+
+        expect(range.endOffset).to.eql(0)
+      })
 
       cy.get('[contenteditable]:first')
       .invoke('html', 'foo').click()
-      .then(expectCaret(3))
+      .then(($el) => {
+        const range = $el.get(0).ownerDocument.getSelection().getRangeAt(0)
+
+        expect(range.startContainer.nodeValue).to.eql('foo')
+        expect(range.startOffset).to.eql(3)
+        expect(range.endContainer.nodeValue).to.eql('foo')
+
+        expect(range.endOffset).to.eql(3)
+      })
 
       cy.get('[contenteditable]:first')
       .invoke('html', '<div>foo</div>').click()
-      .then(expectCaret(3))
+      .then(($el) => {
+        const range = $el.get(0).ownerDocument.getSelection().getRangeAt(0)
+
+        expect(range.startContainer.nodeValue).to.eql('foo')
+        expect(range.startOffset).to.eql(3)
+        expect(range.endContainer.nodeValue).to.eql('foo')
+
+        expect(range.endOffset).to.eql(3)
+      })
 
       cy.get('[contenteditable]:first')
-      // firefox headless: prevent contenteditable from disappearing (dont set to empty)
+      // firefox: prevent contenteditable from disappearing (dont set to empty)
       .invoke('html', '<br>').click()
-      .then(expectCaret(0))
+      .then(($el) => {
+        const el = $el.get(0)
+        const range = el.ownerDocument.getSelection().getRangeAt(0)
+
+        expect(range.startContainer).to.eql(el)
+        expect(range.startOffset).to.eql(0)
+        expect(range.endContainer).to.eql(el)
+
+        expect(range.endOffset).to.eql(0)
+      })
     })
 
     it('can click SVG elements', () => {
@@ -847,105 +879,6 @@ describe('src/cy/commands/actions/click', () => {
 
       cy.get('#canvas').click().then(() => {
         expect(onClick).to.be.calledOnce
-      })
-    })
-
-    describe('modifier options', () => {
-      beforeEach(() => {
-        cy.visit('/fixtures/issue-486.html')
-      })
-
-      it('ctrl', () => {
-        cy.get('#button').click({
-          ctrlKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Ctrl}')
-
-        // ctrl should be released
-        cy.get('#button').click()
-        cy.get('#result').should('not.contain', '{Ctrl}')
-
-        cy.get('#button').click({
-          controlKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Ctrl}')
-      })
-
-      it('alt', () => {
-        cy.get('#button').click({
-          altKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Alt}')
-
-        // alt should be released
-        cy.get('#button').click()
-        cy.get('#result').should('not.contain', '{Alt}')
-
-        cy.get('#button').click({
-          optionKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Alt}')
-      })
-
-      it('shift', () => {
-        cy.get('#button').click({
-          shiftKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Shift}')
-
-        // shift should be released
-        cy.get('#button').click()
-        cy.get('#result').should('not.contain', '{Shift}')
-      })
-
-      it('meta', () => {
-        cy.get('#button').click({
-          metaKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Meta}')
-
-        // shift should be released
-        cy.get('#button').click()
-        cy.get('#result').should('not.contain', '{Meta}')
-
-        cy.get('#button').click({
-          commandKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Meta}')
-
-        cy.get('#button').click({
-          cmdKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Meta}')
-      })
-
-      it('multiple', () => {
-        cy.get('#button').click({
-          ctrlKey: true,
-          altKey: true,
-          shiftKey: true,
-          metaKey: true,
-        })
-
-        cy.get('#result').should('contain', '{Ctrl}')
-        cy.get('#result').should('contain', '{Alt}')
-        cy.get('#result').should('contain', '{Shift}')
-        cy.get('#result').should('contain', '{Meta}')
-
-        // modifiers should be released
-        cy.get('#button').click()
-        cy.get('#result').should('not.contain', '{Ctrl}')
-        cy.get('#result').should('not.contain', '{Alt}')
-        cy.get('#result').should('not.contain', '{Shift}')
-        cy.get('#result').should('not.contain', '{Meta}')
       })
     })
 
@@ -1035,14 +968,6 @@ describe('src/cy/commands/actions/click', () => {
       // https://github.com/cypress-io/cypress/issues/7343
       it('can click on inline elements that wrap lines where the first rect has no width', () => {
         cy.get('#overflow-link-width').click()
-      })
-
-      it('can click on elements with `opacity: 0`', () => {
-        cy.get('#opacity-0').click()
-      })
-
-      it('can click on elements with parents that have `opacity: 0`', () => {
-        cy.get('#opacity-0-parent').click()
       })
 
       // readonly should only limit typing, not clicking
@@ -1186,77 +1111,6 @@ describe('src/cy/commands/actions/click', () => {
         })
       })
 
-      it('can specify scrollBehavior in options', () => {
-        cy.get('input:first').then((el) => {
-          cy.spy(el[0], 'scrollIntoView')
-        })
-
-        cy.get('input:first').click({ scrollBehavior: 'bottom' })
-
-        cy.get('input:first').then((el) => {
-          expect(el[0].scrollIntoView).calledWith({ block: 'end' })
-        })
-      })
-
-      it('does not scroll when scrollBehavior is false in options', () => {
-        cy.get('input:first').then((el) => {
-          cy.spy(el[0], 'scrollIntoView')
-        })
-
-        cy.get('input:first').click({ scrollBehavior: false })
-
-        cy.get('input:first').then((el) => {
-          expect(el[0].scrollIntoView).not.to.be.called
-        })
-      })
-
-      it('does not scroll when scrollBehavior is false in config', { scrollBehavior: false }, () => {
-        cy.get('input:first').then((el) => {
-          cy.spy(el[0], 'scrollIntoView')
-        })
-
-        cy.get('input:first').click()
-
-        cy.get('input:first').then((el) => {
-          expect(el[0].scrollIntoView).not.to.be.called
-        })
-      })
-
-      it('calls scrollIntoView by default', () => {
-        cy.get('input:first').then((el) => {
-          cy.spy(el[0], 'scrollIntoView')
-        })
-
-        cy.get('input:first').click()
-
-        cy.get('input:first').then((el) => {
-          expect(el[0].scrollIntoView).to.be.calledWith({ block: 'start' })
-        })
-      })
-
-      it('errors when scrollBehavior is false and element is out of view and is clicked', (done) => {
-        cy.on('fail', (err) => {
-          expect(err.message).to.include('`cy.click()` failed because the center of this element is hidden from view')
-          expect(cy.state('window').scrollY).to.equal(0)
-          expect(cy.state('window').scrollX).to.equal(0)
-
-          done()
-        })
-
-        // make sure the input is out of view
-        const $body = cy.$$('body')
-
-        $('<div>Long block 5</div>')
-        .css({
-          height: '500px',
-          border: '1px solid red',
-          marginTop: '10px',
-          width: '100%',
-        }).prependTo($body)
-
-        cy.get('input:first').click({ scrollBehavior: false, timeout: 200 })
-      })
-
       it('can force click on hidden elements', () => {
         cy.get('button:first').invoke('hide').click({ force: true })
       })
@@ -1290,28 +1144,6 @@ describe('src/cy/commands/actions/click', () => {
           expect(scrolled).to.be.empty
           expect(retried).to.be.false
 
-          expect(clicked).to.be.true
-        })
-      })
-
-      it('can forcibly click when being covered by element with `opacity: 0`', () => {
-        const $btn = $('<button>button covered</button>').attr('id', 'button-covered-in-span').prependTo(cy.$$('body'))
-
-        $('<span>span on button</span>').css({ opacity: 0, position: 'absolute', left: $btn.offset().left, top: $btn.offset().top, padding: 5, display: 'inline-block' }).prependTo(cy.$$('body'))
-
-        let retried = false
-        let clicked = false
-
-        cy.on('command:retry', () => {
-          retried = true
-        })
-
-        $btn.on('click', () => {
-          clicked = true
-        })
-
-        cy.get('#button-covered-in-span').click({ force: true }).then(() => {
-          expect(retried).to.be.false
           expect(clicked).to.be.true
         })
       })
@@ -1855,11 +1687,7 @@ describe('src/cy/commands/actions/click', () => {
 
         cy.on('log:changed', (log, attr) => {
           if (log.name === 'click' && attr._emittedAttrs.coords) {
-            const args = attr._emittedAttrs.message.split(', ').map((text) => {
-              const parts = text.split(':')
-
-              return parseInt(parts[1])
-            })
+            const args = attr._emittedAttrs.message.split(', ').map((i) => parseInt(i))
             const coords = attr._emittedAttrs.coords
             const position = Cypress.dom.getElementPositioning($btn).fromAutWindow
 
@@ -2121,32 +1949,6 @@ describe('src/cy/commands/actions/click', () => {
         })
 
         cy.get('#three-buttons button').click({ multiple: true })
-      })
-
-      it('throws when the element has `opacity: 0` but is not visible', function (done) {
-        cy.on('fail', (err) => {
-          expect(this.logs.length).eq(2)
-          expect(err.message).not.to.contain('CSS property: `opacity: 0`')
-          expect(err.message).to.contain('`cy.click()` failed because this element is not visible')
-
-          done()
-        })
-
-        cy.get('#opacity-0-hidden').click()
-      })
-
-      it('throws when element with `opacity: 0` is covering element', function (done) {
-        const $btn = $('<button>button covered</button>').attr('id', 'button-covered-in-span').prependTo(cy.$$('body'))
-
-        $('<span>span on button</span>').css({ opacity: 0, position: 'absolute', left: $btn.offset().left, top: $btn.offset().top, padding: 5, display: 'inline-block' }).prependTo(cy.$$('body'))
-
-        cy.on('fail', (err) => {
-          expect(this.logs.length).eq(2)
-          expect(err.message).to.include('is being covered by another element')
-          done()
-        })
-
-        cy.get('#button-covered-in-span').click()
       })
 
       it('throws when subject is disabled', function (done) {
@@ -3905,16 +3707,11 @@ describe('shadow dom', () => {
     .rightclick()
   })
 
-  it('focuses the correct ancestor when it is outside shadow dom', () => {
-    cy.get('.inside-focusable', { includeShadowDom: true }).click()
-    cy.get('.focusable').should('be.focused')
-  })
-
   // https://github.com/cypress-io/cypress/issues/7679
-  it('does not hang when clicking on custom element', () => {
+  it('does not hang when experimentalShadowDomSupport is false and clicking on custom element', () => {
+    Cypress.config('experimentalShadowDomSupport', false)
     // needs some size or it's considered invisible and click will fail its prerequisites
-    // so we make it display: block so its getClientRects() contains only a single
-    cy.$$('#shadow-element-1').css({ display: 'block' })
+    cy.$$('#shadow-element-1').css({ padding: 2 })
 
     cy.get('#shadow-element-1').click()
   })
@@ -4658,8 +4455,6 @@ describe('mouse state', () => {
 
           expect(targetRect.top).gt(iframeRect.top)
           expect(targetRect.bottom).lt(iframeRect.bottom)
-          expect(targetRect.left).gt(iframeRect.left)
-          expect(targetRect.right).lt(iframeRect.right)
         })
       })
     })

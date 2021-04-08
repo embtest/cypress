@@ -1,89 +1,66 @@
 const _ = require('lodash')
 
 const $dom = require('../../dom')
-const $elements = require('../../dom/elements')
-const { resolveShadowDomInclusion } = require('../../cypress/shadow_dom_utils')
 
 const traversals = 'find filter not children eq closest first last next nextAll nextUntil parent parents parentsUntil prev prevAll prevUntil siblings'.split(' ')
 
 const optInShadowTraversals = {
-  find: (cy, $el, arg1, arg2) => {
-    const roots = $el.map((i, el) => {
-      return $dom.findAllShadowRoots(el)
-    })
+  find: (cy, el, arg1, arg2) => {
+    const roots = []
+
+    // for each of the selection, find all descendent
+    // elements who have a shadow root, and return those
+    // roots.
+    for (let i = 0; i < el.length; i++) {
+      roots.push(...$dom.findAllShadowRoots(el[i]))
+    }
 
     // add the roots to the existing selection
-    const elementsWithShadow = $el.add(_.flatten(roots))
+    const elementsWithShadow = el.add(roots)
 
     // query the entire set of [selection + shadow roots]
     return elementsWithShadow.find(arg1, arg2)
   },
 }
 
-const sortedUnique = (cy, $el) => {
-  // we want _.uniq() to keep the elements with higher indexes instead of lower
-  // so we reverse, uniq, then reverse again
-  // so [div1, body, html, div2, body, html]
-  // becomes [div1, div2, body, html] and not [div1, body, html, div2]
-  return cy.$$(_($el).reverse().uniq().reverse().value())
-}
-
 const autoShadowTraversals = {
-  closest: (cy, $el, selector) => {
-    const nodes = _.reduce($el, (nodes, el) => {
-      const getClosest = (node) => {
-        const closestNode = node.closest(selector)
+  parents: (cy, el, arg1) => {
+    let parents = []
 
-        if (closestNode) return nodes.concat(closestNode)
+    for (let i = 0; i < el.length; i++) {
+      let current = el[i]
+      let parent
 
-        const root = el.getRootNode()
+      while ((parent = $dom.getParent(current))) {
+        parents.push(parent)
+        current = parent
+      }
+    }
 
-        if (!$elements.isShadowRoot(root)) return nodes
+    return cy.$$(parents)
+  },
+  closest: (cy, el, arg1) => {
+    let nodes = []
 
-        return getClosest(root.host)
+    for (let i = 0; i < el.length; i++) {
+      let found = el[i].closest(arg1)
+      let root = el[i].getRootNode()
+      const win = $dom.getWindowByElement(el[i])
+
+      // if we didn't already get a result, traverse
+      // up the tree if we are in a shadow root and
+      // repeat.
+      while (!found && root instanceof win.ShadowRoot) {
+        found = root.host.closest(arg1)
+        root = root.getRootNode()
       }
 
-      return getClosest(el)
-    }, [])
-
-    return sortedUnique(cy, nodes)
-  },
-  parent: (cy, $el) => {
-    const parents = $el.map((i, el) => {
-      return $elements.getParentNode(el)
-    })
-
-    return sortedUnique(cy, parents)
-  },
-  parents: (cy, $el, selector) => {
-    let $parents = $el.map((i, el) => {
-      return $elements.getAllParents(el)
-    })
-
-    if ($el.length > 1) {
-      $parents = sortedUnique(cy, $parents)
+      if (found) {
+        nodes.push(found)
+      }
     }
 
-    if (!selector) {
-      return $parents
-    }
-
-    return $parents.filter(selector)
-  },
-  parentsUntil: (cy, $el, selectorOrEl, filter) => {
-    let $parents = $el.map((i, el) => {
-      return $elements.getAllParents(el, selectorOrEl)
-    })
-
-    if ($el.length > 1) {
-      $parents = sortedUnique(cy, $parents)
-    }
-
-    if (!filter) {
-      return $parents
-    }
-
-    return $parents.filter(filter)
+    return cy.$$(nodes)
   },
 }
 
@@ -96,11 +73,6 @@ module.exports = (Commands, Cypress, cy) => {
 
       if (_.isObject(arg2) && !_.isFunction(arg2)) {
         options = arg2
-      }
-
-      // jQuery or DOM object is not an option
-      if ($dom.isJquery(options) || $dom.isElement(options)) {
-        options = {}
       }
 
       const userOptions = options || {}
@@ -123,7 +95,7 @@ module.exports = (Commands, Cypress, cy) => {
       if (options.log !== false) {
         options._log = Cypress.log({
           message: getSelector(),
-          timeout: options.timeout,
+          displayName: traversal.replace(/([A-Z])/, ' $1'),
           options: userOptions,
           consoleProps () {
             return consoleProps
@@ -132,18 +104,18 @@ module.exports = (Commands, Cypress, cy) => {
       }
 
       const getEl = () => {
-        const includeShadowDom = resolveShadowDomInclusion(Cypress, userOptions.includeShadowDom)
+        const shadowDomSupportEnabled = Cypress.config('experimentalShadowDomSupport')
         const optInShadowTraversal = optInShadowTraversals[traversal]
         const autoShadowTraversal = autoShadowTraversals[traversal]
 
-        if (includeShadowDom && optInShadowTraversal) {
+        if (shadowDomSupportEnabled && options.includeShadowDom && optInShadowTraversal) {
           // if we're told explicitly to ignore shadow boundaries,
           // use the replacement traversal function if one exists
           // so we can cross boundaries
           return optInShadowTraversal(cy, subject, arg1, arg2)
         }
 
-        if (autoShadowTraversal && $dom.isWithinShadowRoot(subject[0])) {
+        if (shadowDomSupportEnabled && autoShadowTraversal && $dom.isWithinShadowRoot(subject[0])) {
           // if we detect the element is within a shadow root and we're using
           // .closest() or .parents(), automatically cross shadow boundaries
           return autoShadowTraversal(cy, subject, arg1, arg2)

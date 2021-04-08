@@ -127,6 +127,135 @@ describe('src/cy/commands/assertions', () => {
       }).should('deep.eq', { foo: 'baz' })
     })
 
+    describe('big objects/arrays', () => {
+      describe('message', () => {
+        it('simple array', () => {
+          const arr = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+          cy.wrap(arr)
+          .should('have.length', arr.length)
+          .then(function () {
+            expect(this.logs[1].get('subject')).to.deep.eq({
+              value: arr,
+              summary: '[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...more]',
+            })
+          })
+        })
+
+        it('simple object', () => {
+          const obj = { 1: '1', 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11 }
+
+          cy.wrap(obj)
+          .should('have.property', 11)
+          .then(function () {
+            expect(this.logs[1].get('subject')).to.deep.eq({
+              value: obj,
+              summary: '{1: "1", 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, ...more}',
+            })
+          })
+        })
+
+        it('object in array', () => {
+          const arr = [1, 1, { cypress: true }, 1, 1, 1, 1, 1, 1, 1, 1]
+
+          cy.wrap(arr)
+          .should('have.length', arr.length)
+          .then(function () {
+            expect(this.logs[1].get('subject')).to.deep.eq({
+              value: arr,
+              summary: '[1, 1, {object}, 1, 1, 1, 1, 1, 1, 1, ...more]',
+            })
+          })
+        })
+
+        it('array in object', () => {
+          const obj = { 1: '1', 2: 2, 3: [1, 2, 3], 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11 }
+
+          cy.wrap(obj)
+          .should('have.property', 11)
+          .then(function () {
+            expect(this.logs[1].get('subject')).to.deep.eq({
+              value: obj,
+              summary: '{1: "1", 2: 2, 3: Array(3), 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, ...more}',
+            })
+          })
+        })
+
+        it('long string', () => {
+          const str = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent porta massa orci, id consectetur velit convallis vel. In augue nisi, imperdiet in congue congue, porttitor ut enim. In lacinia porta nunc eleifend lobortis. Fusce eu gravida felis.'
+
+          cy.wrap(str)
+          .should('have.length', str.length)
+          .then(function () {
+            expect(this.logs[1].get('subject')).to.deep.eq({
+              value: str,
+              summary: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent porta massa orci, id consectetur v [...more]',
+            })
+          })
+        })
+      })
+
+      describe('object', () => {
+        it('shows correct expected message', () => {
+          const arr = new Uint8ClampedArray(2560000)
+
+          cy.wrap(arr)
+          .should('have.length', 2560000)
+          .then(function () {
+            expect(this.logs[1].get('message')).to.eq(
+              'expected %{this} to have a length of **2560000**',
+            )
+          })
+        })
+
+        it('shows value as a subject in consoleprop', () => {
+          const arr = new Uint8ClampedArray(20)
+
+          cy.wrap(arr)
+          .should('have.property', '12')
+          .then(function () {
+            expect(this.logs[1].invoke('consoleProps')).to.deep.eq({
+              Command: 'assert',
+              expected: undefined,
+              actual: arr,
+              subject: arr,
+              Message: `expected %{this} to have property '12'`,
+            })
+          })
+        })
+      })
+
+      describe('array', () => {
+        it('shows correct expected message', () => {
+          const arr = Array.from({ length: 1000000 }, () => 1)
+
+          cy.wrap(arr)
+          .should('have.length', 1000000)
+          .then(function () {
+            expect(this.logs[1].get('message')).to.eq(
+              'expected %{this} to have a length of **1000000**',
+            )
+          })
+        })
+
+        it('shows value as a subject in consoleprop', () => {
+          const arr = Array.from({ length: 20 }, () => 1)
+
+          cy.wrap(arr)
+          .should('include', 1)
+          .then(function () {
+            expect(this.logs[1].invoke('consoleProps')).to.deep.eq({
+              Command: 'assert',
+              expected: undefined,
+              actual: arr,
+              subject: arr,
+              Message: `expected %{this} to include 1`,
+            })
+          })
+        })
+      })
+    })
+
     describe('function argument', () => {
       it('waits until function is true', () => {
         const button = cy.$$('button:first')
@@ -408,48 +537,6 @@ describe('src/cy/commands/assertions', () => {
       })
     })
 
-    // https://github.com/cypress-io/cypress/issues/9644
-    describe('calledOnceWith', () => {
-      it('be.calledOnceWith', () => {
-        const spy = cy.spy().as('spy')
-
-        setTimeout(() => {
-          spy({ bar: 'test' }, 1234)
-        }, 100)
-
-        cy.get('@spy').should(
-          'be.calledOnceWith',
-          {
-            bar: 'test',
-          },
-        )
-      })
-
-      it('be.calledOnceWithExactly', () => {
-        const spy = cy.spy().as('spy')
-
-        setTimeout(() => {
-          spy({ bar: 'test' })
-        }, 100)
-
-        cy.get('@spy').should(
-          'be.calledOnceWithExactly',
-          { bar: 'test' },
-        )
-
-        const spy2 = cy.spy().as('spy2')
-
-        setTimeout(() => {
-          spy2({ bar: 'test' }, 12345)
-        }, 100)
-
-        cy.get('@spy2').should(
-          'not.be.calledOnceWithExactly',
-          { bar: 'test' },
-        )
-      })
-    })
-
     describe('errors', {
       defaultCommandTimeout: 50,
     }, () => {
@@ -471,35 +558,6 @@ describe('src/cy/commands/assertions', () => {
         })
 
         cy.noop({}).should('dee.eq', {})
-      })
-
-      // https://github.com/cypress-io/cypress/issues/7870
-      it('handles when a string literal is thrown', () => {
-        cy.on('fail', (err) => {
-          expect(err.message).eq('error string')
-        })
-
-        cy.then(() => {
-          throw 'error string'
-        })
-      })
-
-      describe('language chainers err', () => {
-        // https://github.com/cypress-io/cypress/issues/883
-        const langChainers = ['to', 'be', 'been', 'is', 'that', 'which', 'and', 'has', 'have', 'with', 'at', 'of', 'same', 'but', 'does', 'still']
-
-        langChainers.forEach((langChainer) => {
-          it(`throws err when assertion contains only one language chainer: ${langChainer}`, (done) => {
-            cy.on('fail', (err) => {
-              expect(err.message).to.eq(`The chainer \`${langChainer}\` is a language chainer provided to improve the readability of your assertions, not an actual assertion. Please provide a valid assertion.`)
-              expect(err.docsUrl).to.eq('https://on.cypress.io/assertions')
-
-              done()
-            })
-
-            cy.noop(true).should(langChainer, true)
-          })
-        })
       })
 
       it('throws err when ends with a non available chainable', (done) => {
@@ -532,7 +590,7 @@ describe('src/cy/commands/assertions', () => {
 
       it('throws when eventually times out', (done) => {
         cy.on('fail', (err) => {
-          expect(err.message).to.eq('Timed out retrying after 50ms: expected \'<button>\' to have class \'does-not-have-class\'')
+          expect(err.message).to.eq('Timed out retrying: expected \'<button>\' to have class \'does-not-have-class\'')
 
           done()
         })
@@ -605,6 +663,25 @@ describe('src/cy/commands/assertions', () => {
         })
 
         cy.get('button').should('have.length', 'foo')
+      })
+
+      it('eventually.have.length is deprecated', function (done) {
+        cy.on('fail', (err) => {
+          const { lastLog } = this
+
+          expect(this.logs.length).to.eq(2)
+          expect(err.message).to.eq('The `eventually` assertion chainer has been deprecated. This is now the default behavior so you can safely remove this word and everything should work as before.')
+          expect(lastLog.get('name')).to.eq('should')
+          expect(lastLog.get('error')).to.eq(err)
+          expect(lastLog.get('state')).to.eq('failed')
+          expect(lastLog.get('snapshots').length).to.eq(1)
+          expect(lastLog.get('snapshots')[0]).to.be.an('object')
+          expect(lastLog.get('message')).to.eq('eventually.have.length, 1')
+
+          done()
+        })
+
+        cy.get('div:first').should('eventually.have.length', 1)
       })
 
       it('does not additionally log when .should is the current command', function (done) {
@@ -1195,20 +1272,6 @@ describe('src/cy/commands/assertions', () => {
         cy.noop('foobar').should('contain', 'oob')
       })
 
-      // https://github.com/cypress-io/cypress/issues/205
-      it('fails existence check on not.contain for non-existent DOM', function (done) {
-        cy.timeout(100)
-        cy.on('fail', ({ message }) => {
-          expect(message)
-          .include('.non-existent')
-          .include('but never found it')
-
-          done()
-        })
-
-        cy.get('.non-existent').should('not.contain', 'foo')
-      })
-
       // https://github.com/cypress-io/cypress/issues/3549
       it('is true when DOM el and not jQuery el contains text', () => {
         cy.get('div').then(($el) => {
@@ -1289,92 +1352,11 @@ describe('src/cy/commands/assertions', () => {
       it('jquery wrapping els and selectors, not changing subject', () => {
         cy.wrap(cy.$$('<div></div>').appendTo('body')).should('not.be.visible')
         cy.wrap(cy.$$('<div></div>')).should('not.exist')
-        cy.wrap(cy.$$('<div></div>').appendTo('body')).should('exist')
+        cy.wrap(cy.$$('<div></div>').appendTo('body')).should('not.be.visible').should('exist')
+        cy.wrap(cy.$$('.non-existent')).should('not.be.visible').should('not.exist')
         cy.wrap(cy.$$('.non-existent')).should('not.exist')
-      })
 
-      // https://github.com/cypress-io/cypress/issues/205
-      describe('does not pass not.visible for non-dom', function () {
-        beforeEach(function () {
-          return Cypress.config('defaultCommandTimeout', 50)
-        })
-
-        it('undefined', function (done) {
-          let spy
-
-          spy = cy.spy(function (err) {
-            expect(err.message).to.contain('attempted to make')
-
-            return done()
-          }).as('onFail')
-
-          cy.on('fail', spy)
-
-          return cy.wrap().should('not.be.visible')
-        })
-
-        it('null', function (done) {
-          let spy
-
-          spy = cy.spy(function (err) {
-            expect(err.message).to.contain('attempted to make')
-
-            return done()
-          }).as('onFail')
-
-          cy.on('fail', spy)
-
-          return cy.wrap(null).should('not.be.visible')
-        })
-
-        it('[]', function (done) {
-          let spy
-
-          spy = cy.spy(function (err) {
-            expect(err.message).to.contain('attempted to make')
-
-            return done()
-          }).as('onFail')
-
-          cy.on('fail', spy)
-
-          return cy.wrap([]).should('not.be.visible')
-        })
-
-        it('{}', function (done) {
-          let spy
-
-          spy = cy.spy(function (err) {
-            expect(err.message).to.contain('attempted to make')
-
-            return done()
-          }).as('onFail')
-
-          cy.on('fail', spy)
-
-          return cy.wrap({}).should('not.be.visible')
-        })
-
-        it('fails not.visible for detached DOM', function (done) {
-          cy.on('fail', (err) => {
-            expect(err.message).include('detached')
-            done()
-          })
-
-          cy.get('<div></div>').should('not.be.visible')
-        })
-
-        it('fails not.visible for non-existent DOM', function (done) {
-          cy.on('fail', (err) => {
-            // prints selector on failure
-            // https://github.com/cypress-io/cypress/issues/5763
-            expect(err.message).include('.non-existent')
-            expect(err.message).include('Expected to find')
-            done()
-          })
-
-          cy.get('.non-existent', { timeout: 10 }).should('not.visible')
-        })
+        cy.wrap(cy.$$('.non-existent')).should('not.be.visible').should('not.exist')
       })
     })
 
@@ -1424,19 +1406,6 @@ describe('src/cy/commands/assertions', () => {
         }))
 
         cy.wrap(buttons).should('have.length', length - 1)
-      })
-
-      // https://github.com/cypress-io/cypress/issues/14484
-      it('does not override user-defined error message', (done) => {
-        cy.on('fail', (err) => {
-          expect(err.message).to.contain('Filter should have 1 items')
-
-          done()
-        })
-
-        cy.get('div').should(($divs) => {
-          expect($divs, 'Filter should have 1 items').to.have.length(1)
-        })
       })
     })
   })
@@ -1920,20 +1889,6 @@ describe('src/cy/commands/assertions', () => {
 
           expect($els).to.include.value('foo')
         }).should('contain.value', 'oo2')
-      })
-
-      // https://github.com/cypress-io/cypress/issues/14359
-      it('shows undefined correctly', (done) => {
-        cy.on('log:added', (attrs, log) => {
-          if (attrs.name === 'assert') {
-            cy.removeAllListeners('log:added')
-            expect(log.get('message')).to.eq('expected **undefined** to have value **somevalue**')
-
-            done()
-          }
-        })
-
-        cy.wrap(undefined).should('have.value', 'somevalue')
       })
     })
 
@@ -2878,12 +2833,12 @@ describe('src/cy/commands/assertions', () => {
   context('cross-origin iframe', () => {
     it(`doesn't throw when iframe exists`, () => {
       cy.visit('fixtures/cross_origin.html')
-      cy.get('.foo').should('not.exist')
+      cy.get('.foo').should('not.be.visible')
     })
 
     it(`doesn't throw when iframe with name attribute exists`, () => {
       cy.visit('fixtures/cross_origin_name.html')
-      cy.get('.foo').should('not.exist')
+      cy.get('.foo').should('not.be.visible')
     })
   })
 })

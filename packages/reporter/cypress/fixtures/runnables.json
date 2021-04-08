@@ -2,14 +2,14 @@
   "id": "r1",
   "title": "",
   "root": true,
-  "hooks": [],
-  "tests": [],
+  "tests": [
+
+  ],
   "suites": [
     {
       "id": "r2",
       "title": "suite 1",
       "root": false,
-      "hooks": [],
       "tests": [
         {
           "id": "r3",
@@ -19,7 +19,141 @@
         {
           "id": "r4",
           "title": "test 2",
-          "state": "failed"
+          "state": "failed",
+          "commands": [
+            {
+              "hookName": "test",
+              "id": "c1",
+              "instrument": "command",
+              "message": "http://localhost:3000",
+              "name": "visit",
+              "state": "passed",
+              "testId": "r4",
+              "options": {
+                "foo": "bar, baz:dev",
+                "timeout": 4000
+              },
+              "type": "parent"
+            },
+            {
+              "hookName": "test",
+              "id": "c2",
+              "instrument": "command",
+              "message": "good",
+              "name": "scrollIntoView",
+              "state": "passed",
+              "testId": "r4",
+              "options": {
+                "foo": "Long text. Old good lorem ipsum. lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec urna risus, laoreet eu elit in, efficitur convallis diam. Suspendisse aliquam tristique commodo. Fusce vel vestibulum ligula. Morbi ut sodales ex, vitae elementum mi."
+              },
+              "type": "parent"
+            },
+            {
+              "hookName": "test",
+              "id": "c3",
+              "instrument": "command",
+              "message": "",
+              "name": "clearCookies",
+              "state": "passed",
+              "options": {
+                "one": {
+                  "two": {
+                    "three": {
+                      "four": {
+                        "five": {
+                          "six": {
+                            "seven": {
+                              "eight": {
+                                "nine": {
+                                  "ten": {
+                                    "eleven": {
+                                      "twelve": "end"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "testId": "r4",
+              "type": "parent"
+            },
+            {
+              "hookName": "test",
+              "id": "c4",
+              "instrument": "command",
+              "message": "value",
+              "name": "set cookie",
+              "state": "passed",
+              "testId": "r4",
+              "type": "parent"
+            },
+            {
+              "hookName": "test",
+              "id": "c5",
+              "instrument": "command",
+              "subject": {
+                "summary": "[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...more]",
+                "value": [
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+                ]
+              },
+              "expected": {
+                "summary": "[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...more]",
+                "value": [
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+                ]
+              },
+              "actual": {
+                "summary": "[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...more]",
+                "value": [
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+                ]
+              },
+              "message": "This: %{this} Expected: %{exp} Actual: %{act}",
+              "name": "assert",
+              "state": "passed",
+              "testId": "r4",
+              "type": "parent"
+            },
+            {
+              "hookName": "test",
+              "id": "c6",
+              "instrument": "command",
+              "message": "value",
+              "name": "empty option obj",
+              "state": "passed",
+              "testId": "r4",
+              "options": {},
+              "type": "parent"
+            }
+          ]
         }
       ],
       "suites": [
@@ -27,7 +161,6 @@
           "id": "r5",
           "title": "nested suite 1",
           "root": false,
-          "hooks": [],
           "tests": [
             {
               "id": "r6",
@@ -37,41 +170,9 @@
             {
               "id": "r7",
               "title": "test 2",
-              "state": "active",
-              "commands": [
-                {
-                  "hookId": "r7",
-                  "id": "c1",
-                  "instrument": "command",
-                  "message": "http://localhost:3000",
-                  "name": "visit",
-                  "state": "pending",
-                  "testId": "r7",
-                  "timeout": 4000,
-                  "type": "parent",
-                  "wallClockStartedAt": "2020-01-01T00:00:00.000Z"
-                }
-              ]
+              "state": "active"
             }
           ]
-        }
-      ]
-    },
-    {
-      "id": "r8",
-      "title": "suite 2",
-      "root": false,
-      "hooks": [],
-      "tests": [
-        {
-          "id": "r9",
-          "title": "test 3",
-          "state": "passed"
-        },
-        {
-          "id": "r10",
-          "title": "test 4",
-          "state": "passed"
         }
       ]
     }

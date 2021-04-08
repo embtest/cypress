@@ -1,7 +1,5 @@
 const _ = require('lodash')
 const Promise = require('bluebird')
-const { waitForRoute } = require('../net-stubbing/wait-for-route')
-const { isDynamicAliasingPossible } = require('../net-stubbing/aliasing')
 const ordinal = require('ordinal')
 
 const $errUtils = require('../../cypress/error_utils')
@@ -25,6 +23,10 @@ const throwErr = (arg) => {
 }
 
 module.exports = (Commands, Cypress, cy, state) => {
+  const waitFunction = () => {
+    $errUtils.throwErrByPath('wait.fn_deprecated')
+  }
+
   let userOptions = null
 
   const waitNumber = (subject, ms, options) => {
@@ -33,7 +35,6 @@ module.exports = (Commands, Cypress, cy, state) => {
 
     if (options.log !== false) {
       options._log = Cypress.log({
-        timeout: ms,
         options: userOptions,
         consoleProps () {
           return {
@@ -60,30 +61,23 @@ module.exports = (Commands, Cypress, cy, state) => {
       })
     }
 
-    const checkForXhr = async function (alias, type, index, num, options) {
-      options.error = $errUtils.errByPath('wait.timed_out', {
-        timeout: options.timeout,
-        alias,
-        num,
-        type,
-      })
-
+    const checkForXhr = function (alias, type, index, num, options) {
       options.type = type
-
-      // check cy.intercept routes
-      const req = waitForRoute(alias, state, type)
-
-      if (req) {
-        return req
-      }
 
       // append .type to the alias
       const xhr = cy.getIndexedXhrByAlias(`${alias}.${type}`, index)
 
       // return our xhr object
       if (xhr) {
-        return xhr
+        return Promise.resolve(xhr)
       }
+
+      options.error = $errUtils.errByPath('wait.timed_out', {
+        timeout: options.timeout,
+        alias,
+        num,
+        type,
+      }).message
 
       const args = [alias, type, index, num, options]
 
@@ -93,36 +87,22 @@ module.exports = (Commands, Cypress, cy, state) => {
     }
 
     const waitForXhr = function (str, options) {
-      let specifier
+      let str2
 
       // we always want to strip everything after the last '.'
       // since we support alias property 'request'
       if ((_.indexOf(str, '.') === -1) ||
       _.keys(cy.state('aliases')).includes(str.slice(1))) {
-        specifier = null
+        str2 = null
       } else {
         // potentially request, response or index
         const allParts = _.split(str, '.')
 
         str = _.join(_.dropRight(allParts, 1), '.')
-        specifier = _.last(allParts)
+        str2 = _.last(allParts)
       }
 
-      let aliasObj
-
-      try {
-        aliasObj = cy.getAlias(str, 'wait', log)
-      } catch (err) {
-        // before cy.intercept, we could know when an alias did/did not exist, because they
-        // were declared synchronously. with cy.intercept, req.alias can be used to dynamically
-        // create aliases, so we cannot know at wait-time if an alias exists or not
-        if (!isDynamicAliasingPossible(state)) {
-          throw err
-        }
-
-        // could be a dynamic alias
-        aliasObj = { alias: str.slice(1) }
-      }
+      const aliasObj = cy.getAlias(str, 'wait', log)
 
       if (!aliasObj) {
         cy.aliasNotFoundFor(str, 'wait', log)
@@ -133,7 +113,7 @@ module.exports = (Commands, Cypress, cy, state) => {
       // by its alias
       const { alias, command } = aliasObj
 
-      str = _.compact([alias, specifier]).join('.')
+      str = _.compact([alias, str2]).join('.')
 
       const type = cy.getXhrTypeByAlias(str)
 
@@ -157,43 +137,11 @@ module.exports = (Commands, Cypress, cy, state) => {
         log.set('referencesAlias', aliases)
       }
 
-      const isNetworkInterceptCommand = (command) => {
-        const commandsThatCreateNetworkIntercepts = ['route', 'route2', 'intercept']
-        const commandName = command.get('name')
-
-        return commandsThatCreateNetworkIntercepts.includes(commandName)
-      }
-
-      const findInterceptAlias = (alias) => {
-        const routes = cy.state('routes') || {}
-
-        return _.find(_.values(routes), { alias })
-      }
-
-      const isInterceptAlias = (alias) => Boolean(findInterceptAlias(alias))
-
-      const isRouteAlias = (alias) => {
-        // has all aliases saved using cy.as() command
-        const aliases = cy.state('aliases') || {}
-
-        const aliasObject = aliases[alias]
-
-        if (!aliasObject) {
-          return false
-        }
-
-        // cy.route aliases have subject that has all XHR properties
-        // let's check one of them
-        return aliasObj.subject && Boolean(aliasObject.subject.xhrUrl)
-      }
-
-      if (command && !isNetworkInterceptCommand(command)) {
-        if (!isInterceptAlias(alias) && !isRouteAlias(alias)) {
-          $errUtils.throwErrByPath('wait.invalid_alias', {
-            onFail: options._log,
-            args: { alias },
-          })
-        }
+      if (command.get('name') !== 'route') {
+        $errUtils.throwErrByPath('wait.invalid_alias', {
+          onFail: options._log,
+          args: { alias },
+        })
       }
 
       // create shallow copy of each options object
@@ -207,20 +155,12 @@ module.exports = (Commands, Cypress, cy, state) => {
         options = _.omit(options, '_runnableTimeout')
         options.timeout = requestTimeout || Cypress.config('requestTimeout')
 
-        if (log) {
-          log.set('timeout', options.timeout)
-        }
-
         return checkForXhr(alias, 'request', index, num, options)
       }
 
       const waitForResponse = () => {
         options = _.omit(options, '_runnableTimeout')
         options.timeout = responseTimeout || Cypress.config('responseTimeout')
-
-        if (log) {
-          log.set('timeout', options.timeout)
-        }
 
         return checkForXhr(alias, 'response', index, num, options)
       }
@@ -262,7 +202,7 @@ module.exports = (Commands, Cypress, cy, state) => {
   }
 
   Commands.addAll({ prevSubject: 'optional' }, {
-    wait (subject, msOrAlias, options = {}) {
+    wait (subject, msOrFnOrAlias, options = {}) {
       userOptions = options
 
       // check to ensure options is an object
@@ -274,38 +214,42 @@ module.exports = (Commands, Cypress, cy, state) => {
       }
 
       options = _.defaults({}, userOptions, { log: true })
-      const args = [subject, msOrAlias, options]
+      const args = [subject, msOrFnOrAlias, options]
 
       try {
-        if (_.isFinite(msOrAlias)) {
+        if (_.isFinite(msOrFnOrAlias)) {
           return waitNumber.apply(window, args)
         }
 
-        if (_.isString(msOrAlias)) {
+        if (_.isFunction(msOrFnOrAlias)) {
+          return waitFunction()
+        }
+
+        if (_.isString(msOrFnOrAlias)) {
           return waitString.apply(window, args)
         }
 
-        if (_.isArray(msOrAlias) && !_.isEmpty(msOrAlias)) {
+        if (_.isArray(msOrFnOrAlias) && !_.isEmpty(msOrFnOrAlias)) {
           return waitString.apply(window, args)
         }
 
         // figure out why this error failed
-        if (_.isNaN(msOrAlias)) {
+        if (_.isNaN(msOrFnOrAlias)) {
           throwErr('NaN')
         }
 
-        if (msOrAlias === Infinity) {
+        if (msOrFnOrAlias === Infinity) {
           throwErr('Infinity')
         }
 
-        if (_.isSymbol(msOrAlias)) {
-          throwErr(msOrAlias.toString())
+        if (_.isSymbol(msOrFnOrAlias)) {
+          throwErr(msOrFnOrAlias.toString())
         }
 
         let arg
 
         try {
-          arg = JSON.stringify(msOrAlias)
+          arg = JSON.stringify(msOrFnOrAlias)
         } catch (error) {
           arg = 'an invalid argument'
         }

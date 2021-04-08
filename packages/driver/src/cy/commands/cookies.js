@@ -57,15 +57,13 @@ const normalizeSameSite = (sameSite) => {
   return sameSite
 }
 
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#Attributes
-function cookieValidatesHostPrefix (options) {
-  return options.secure === false || (options.path && options.path !== '/')
-}
-function cookieValidatesSecurePrefix (options) {
-  return options.secure === false
-}
-
 module.exports = function (Commands, Cypress, cy, state, config) {
+  const maybeStripSameSiteProp = (cookie) => {
+    if (cookie && !Cypress.config('experimentalGetCookiesSameSite')) {
+      delete cookie.sameSite
+    }
+  }
+
   const automateCookies = function (event, obj = {}, log, timeout) {
     const automate = () => {
       return Cypress.automation(event, mergeDefaults(obj))
@@ -103,7 +101,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         return resp
       }
 
-      // iterate over all of these and ensure none are allowed
+      // iterate over all of these and ensure none are whitelisted
       // or preserved
       const cookies = Cypress.Cookies.getClearableCookies(resp)
 
@@ -158,7 +156,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: name,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             let c
@@ -186,6 +183,8 @@ module.exports = function (Commands, Cypress, cy, state, config) {
 
       return automateCookies('get:cookie', { name }, options._log, options.timeout)
       .then((resp) => {
+        maybeStripSameSiteProp(resp)
+
         options.cookie = resp
 
         return resp
@@ -204,7 +203,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: '',
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             let c
@@ -224,6 +222,10 @@ module.exports = function (Commands, Cypress, cy, state, config) {
 
       return automateCookies('get:cookies', _.pick(options, 'domain'), options._log, options.timeout)
       .then((resp) => {
+        if (Array.isArray(resp)) {
+          resp.forEach(maybeStripSameSiteProp)
+        }
+
         options.cookies = resp
 
         return resp
@@ -250,7 +252,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: [name, value],
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             let c
@@ -296,16 +297,10 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         $errUtils.throwErrByPath('setCookie.invalid_arguments', { onFail })
       }
 
-      if (options.name.startsWith('__Secure-') && cookieValidatesSecurePrefix(options)) {
-        $errUtils.throwErrByPath('setCookie.secure_prefix', { onFail })
-      }
-
-      if (options.name.startsWith('__Host-') && cookieValidatesHostPrefix(options)) {
-        $errUtils.throwErrByPath('setCookie.host_prefix', { onFail })
-      }
-
       return automateCookies('set:cookie', cookie, options._log, options.timeout)
       .then((resp) => {
+        maybeStripSameSiteProp(resp)
+
         options.cookie = resp
 
         return resp
@@ -323,7 +318,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: name,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             let c
@@ -372,7 +366,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: '',
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             let c

@@ -28,7 +28,6 @@ module.exports = (Commands, Cypress, cy) => {
       if (options.log) {
         options._log = Cypress.log({
           $el: options.$el,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return { 'Applied To': $dom.getElements(options.$el) }
@@ -112,7 +111,6 @@ module.exports = (Commands, Cypress, cy) => {
       if (options.log) {
         options._log = Cypress.log({
           $el: options.$el,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return { 'Applied To': $dom.getElements(options.$el) }

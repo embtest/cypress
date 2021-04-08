@@ -47,7 +47,7 @@ module.exports = function (Commands, Cypress, cy, state) {
   // until they're 'really' resolved, so naturally this API
   // supports nesting promises
   const thenFn = function (subject, userOptions, fn) {
-    const ctx = state('ctx')
+    const ctx = this
 
     if (_.isFunction(userOptions)) {
       fn = userOptions
@@ -227,7 +227,6 @@ module.exports = function (Commands, Cypress, cy, state) {
         message,
         options: userOptions,
         $el: $dom.isElement(subject) ? subject : null,
-        timeout: options.timeout,
         consoleProps () {
           return { Subject: subject }
         },
@@ -519,22 +518,17 @@ module.exports = function (Commands, Cypress, cy, state) {
       const next = state('current').get('next')
 
       if (next) {
-        const checkSubject = (newSubject, args, firstCall) => {
+        const checkSubject = (newSubject, args) => {
           if (state('current') !== next) {
             return
           }
 
-          // https://github.com/cypress-io/cypress/issues/4921
-          // When dual commands like contains() is used as the firstCall (cy.contains() style),
-          // we should not prepend subject.
-          if (!firstCall) {
-            // find the new subject and splice it out
-            // with our existing subject
-            const index = _.indexOf(args, newSubject)
+          // find the new subject and splice it out
+          // with our existing subject
+          const index = _.indexOf(args, newSubject)
 
-            if (index > -1) {
-              args.splice(index, 1, subject)
-            }
+          if (index > -1) {
+            args.splice(index, 1, subject)
           }
 
           return cy.removeListener('next:subject:prepared', checkSubject)

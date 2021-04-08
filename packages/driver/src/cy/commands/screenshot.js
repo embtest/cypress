@@ -7,7 +7,6 @@ const Promise = require('bluebird')
 const $Screenshot = require('../../cypress/screenshot')
 const $dom = require('../../dom')
 const $errUtils = require('../../cypress/error_utils')
-const $utils = require('../../cypress/utils')
 
 const getViewportHeight = (state) => {
   // TODO this doesn't seem correct
@@ -55,7 +54,6 @@ const automateScreenshot = (state, options = {}) => {
     titles,
     testId: runnable.id,
     takenPaths: state('screenshotPaths'),
-    testAttemptIndex: $utils.getTestFromRunnable(runnable)._currentRetry,
   }, _.omit(options, 'runnable', 'timeout', 'log', 'subject'))
 
   const automate = () => {
@@ -96,14 +94,6 @@ const scrollOverrides = (win, doc) => {
 
   // hide scrollbars
   doc.documentElement.style.overflow = 'hidden'
-
-  // in the case that an element might change size on scroll
-  // we trigger a scroll event to ensure that all elements are
-  // at their final size before we calculate the total height
-  // since we scroll down the page in takeScrollingScreenshots
-  // and don't want the page size to change once we start
-  // https://github.com/cypress-io/cypress/issues/6099
-  win.dispatchEvent(new win.Event('scroll'))
 
   return () => {
     doc.documentElement.style.overflow = originalOverflow
@@ -306,7 +296,6 @@ const takeScreenshot = (Cypress, state, screenshotConfig, options = {}) => {
   const getOptions = (isOpen) => {
     return {
       id: runnable.id,
-      testAttemptIndex: $utils.getTestFromRunnable(runnable)._currentRetry,
       isOpen,
       appOnly: isAppOnly(screenshotConfig),
       scale: getShouldScale(screenshotConfig),
@@ -391,7 +380,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
   Cypress.on('runnable:after:run:async', (test, runnable) => {
     const screenshotConfig = $Screenshot.getConfig()
 
-    if (!test.err || !screenshotConfig.screenshotOnRunFailure || config('isInteractive') || test.err.isPending || !config('screenshotOnRunFailure')) {
+    if (!test.err || !screenshotConfig.screenshotOnRunFailure || config('isInteractive') || test.err.isPending) {
       return
     }
 
@@ -455,7 +444,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       if (options.log) {
         options._log = Cypress.log({
           message: name,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return consoleProps

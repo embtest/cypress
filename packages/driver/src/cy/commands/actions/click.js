@@ -34,9 +34,9 @@ const formatMouseEvents = (events) => {
 }
 
 module.exports = (Commands, Cypress, cy, state, config) => {
-  const { mouse, keyboard } = cy.devices
+  const { mouse } = cy.devices
 
-  const mouseAction = (eventName, { subject, positionOrX, y, userOptions, onReady, onTable, defaultOptions }) => {
+  const mouseAction = (eventName, { subject, positionOrX, y, userOptions, onReady, onTable, defaultOptions, displayName }) => {
     let position
     let x
 
@@ -44,8 +44,8 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
     const message = $utils.stringify([
       position ? `position: ${position}` : undefined,
-      _.isNumber(x) ? `x: ${x}` : undefined,
-      _.isNumber(y) ? `y: ${y}` : undefined,
+      x ? `x: ${x}` : undefined,
+      y ? `y: ${y}` : undefined,
     ])
 
     const options = _.defaults({}, userOptions, {
@@ -60,15 +60,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
       errorOnSelect: true,
       waitForAnimations: config('waitForAnimations'),
       animationDistanceThreshold: config('animationDistanceThreshold'),
-      scrollBehavior: config('scrollBehavior'),
-      ctrlKey: false,
-      controlKey: false,
-      altKey: false,
-      optionKey: false,
-      shiftKey: false,
-      metaKey: false,
-      commandKey: false,
-      cmdKey: false,
       ...defaultOptions,
     })
 
@@ -78,24 +69,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
       $errUtils.throwErrByPath('click.multiple_elements', {
         args: { cmd: eventName, num: options.$el.length },
       })
-    }
-
-    const flagModifiers = (press) => {
-      if (options.ctrlKey || options.controlKey) {
-        keyboard.flagModifier({ key: 'Control' }, press)
-      }
-
-      if (options.altKey || options.optionKey) {
-        keyboard.flagModifier({ key: 'Alt' }, press)
-      }
-
-      if (options.shiftKey) {
-        keyboard.flagModifier({ key: 'Shift' }, press)
-      }
-
-      if (options.metaKey || options.commandKey || options.cmdKey) {
-        keyboard.flagModifier({ key: 'Meta' }, press)
-      }
     }
 
     const perform = (el) => {
@@ -108,9 +81,9 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
         options._log = Cypress.log({
           message,
+          displayName,
           options: userOptions,
           $el,
-          timeout: options.timeout,
         })
 
         options._log.snapshot('before', { next: 'after' })
@@ -177,7 +150,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
       }
 
       // must use callbacks here instead of .then()
-      // because we're issuing the clicks synchronously
+      // because we're issuing the clicks synchonrously
       // once we establish the coordinates and the element
       // passes all of the internal checks
       return $actionability.verify(cy, $el, options, {
@@ -192,11 +165,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
           const moveEvents = mouse.move(fromElViewport, forceEl)
 
-          flagModifiers(true)
-
           const onReadyProps = onReady(fromElViewport, forceEl)
-
-          flagModifiers(false)
 
           return createLog({
             moveEvents,
@@ -244,6 +213,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         subject,
         userOptions: options,
         positionOrX,
+        displayName: 'click',
         onReady (fromElViewport, forceEl) {
           const clickEvents = mouse.click(fromElViewport, forceEl)
 
@@ -275,6 +245,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         // TODO: 4.0 make this false by default
         defaultOptions: { multiple: true },
         positionOrX,
+        displayName: 'double click',
         onReady (fromElViewport, forceEl) {
           const { clickEvents1, clickEvents2, dblclick } = mouse.dblclick(fromElViewport, forceEl)
 
@@ -309,6 +280,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         subject,
         userOptions: options,
         positionOrX,
+        displayName: 'right click',
         onReady (fromElViewport, forceEl) {
           const { clickEvents, contextmenuEvent } = mouse.rightclick(fromElViewport, forceEl)
 

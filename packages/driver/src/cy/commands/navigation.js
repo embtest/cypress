@@ -107,7 +107,7 @@ const specifyFileByRelativePath = (url, log) => {
   })
 }
 
-const aboutBlank = (cy, win) => {
+const aboutBlank = (win) => {
   return new Promise((resolve) => {
     cy.once('window:load', resolve)
 
@@ -198,7 +198,7 @@ const formSubmitted = (Cypress, e) => {
   })
 }
 
-const pageLoading = (bool, Cypress, state) => {
+const pageLoading = (bool, state) => {
   if (state('pageLoading') === bool) {
     return
   }
@@ -215,7 +215,7 @@ const stabilityChanged = (Cypress, state, config, stable) => {
       // if we're currently visiting about blank
       // and becoming unstable for the first time
       // notifiy that we're page loading
-      pageLoading(true, Cypress, state)
+      pageLoading(true, state)
 
       return
     }
@@ -226,7 +226,7 @@ const stabilityChanged = (Cypress, state, config, stable) => {
   }
 
   // let the world know that the app is page:loading
-  pageLoading(!stable, Cypress, state)
+  pageLoading(!stable, state)
 
   // if we aren't becoming unstable
   // then just return now
@@ -263,7 +263,6 @@ const stabilityChanged = (Cypress, state, config, stable) => {
     name: 'page load',
     message: '--waiting for new page to load--',
     event: true,
-    timeout: options.timeout,
     consoleProps () {
       return {
         Note: 'This event initially fires when your application fires its \'beforeunload\' event and completes when your application fires its \'load\' event after the next page loads.',
@@ -425,23 +424,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
       return
     }
 
-    // if a user-loaded script redefines document.querySelectorAll and
-    // numTestsKeptInMemory is 0 (no snapshotting), jQuery thinks
-    // that document.querySelectorAll is not available (it tests to see that
-    // it's the native definition for some reason) and doesn't use it,
-    // which can fail with a weird error if querying shadow dom.
-    // this ensures that jQuery determines support for document.querySelectorAll
-    // before user scripts are executed.
-    // (when snapshotting is enabled, it can achieve the same thing if an XHR
-    // causes it to snapshot before the user script is executed, but that's
-    // not guaranteed to happen.)
-    // https://github.com/cypress-io/cypress/issues/7676
-    // this shouldn't error, but we wrap it to ignore potential errors
-    // out of an abundance of caution
-    try {
-      cy.$$('body', contentWindow.document)
-    } catch (e) {} // eslint-disable-line no-empty
-
     const options = _.last(current.get('args'))
 
     return options?.onBeforeLoad?.call(runnable.ctx, contentWindow)
@@ -503,7 +485,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
           if (options.log) {
             options._log = Cypress.log({
-              timeout: options.timeout,
               options: userOptions,
             })
 
@@ -548,7 +529,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
       if (options.log) {
         options._log = Cypress.log({
-          timeout: options.timeout,
           options: userOptions,
         })
       }
@@ -721,7 +701,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
         options._log = Cypress.log({
           message,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return consoleProps
@@ -849,9 +828,6 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         if (previousDomainVisited && (remote.originPolicy !== existing.originPolicy)) {
           // if we've already visited a new superDomain
           // then die else we'd be in a terrible endless loop
-          // we also need to disable retries to prevent the endless loop
-          $utils.getTestFromRunnable(state('runnable'))._retries = 0
-
           return cannotVisitDifferentOrigin(remote.origin, previousDomainVisited, remote, existing, options._log)
         }
 
@@ -1050,7 +1026,7 @@ module.exports = (Commands, Cypress, cy, state, config) => {
           hasVisitedAboutBlank = true
           currentlyVisitingAboutBlank = true
 
-          return aboutBlank(cy, win)
+          return aboutBlank(win)
           .then(() => {
             currentlyVisitingAboutBlank = false
 

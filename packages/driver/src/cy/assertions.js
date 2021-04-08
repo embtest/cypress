@@ -1,8 +1,12 @@
+/* global cy Cypress */
 const _ = require('lodash')
 const Promise = require('bluebird')
 
 const $dom = require('../dom')
 const $errUtils = require('../cypress/error_utils')
+const { LOGGED_ARRAY_SIZE } = require('./chai')
+const { LOGGED_OBJ_SIZE } = require('./chai')
+const { logBigValue } = require('./big_value')
 
 // TODO
 // bTagOpen + bTagClosed
@@ -54,6 +58,7 @@ const isDomSubjectAndMatchesValue = (value, subject) => {
 // 1. always remove value
 // 2. if value is a jquery object set a subject
 // 3. if actual is undefined or its not expected remove both actual + expected
+// 4. if value is no a jquery object but it is big, set a subject
 const parseValueActualAndExpected = (value, actual, expected) => {
   const obj = { actual, expected }
 
@@ -63,20 +68,35 @@ const parseValueActualAndExpected = (value, actual, expected) => {
     if (_.isUndefined(actual) || (actual !== expected)) {
       delete obj.actual
       delete obj.expected
+    } else {
+      if ((Array.isArray(value) && value.length > LOGGED_ARRAY_SIZE) ||
+        (_.isObject(value) && Object.keys(value).length > LOGGED_OBJ_SIZE)) {
+        obj.subject = value
+      }
     }
   }
 
   return obj
 }
 
-const create = function (Cypress, cy) {
+const logValues = (value, actual, expected) => {
+  return !$dom.isJquery(value)
+    ? {
+      subject: logBigValue(value),
+      actual: logBigValue(actual),
+      expected: logBigValue(expected),
+    }
+    : {}
+}
+
+const create = function (state, queue, retryFn) {
   const getUpcomingAssertions = () => {
-    const index = cy.state('index') + 1
+    const index = state('index') + 1
 
     const assertions = []
 
     // grab the rest of the queue'd commands
-    for (let cmd of cy.queue.slice(index).get()) {
+    for (let cmd of queue.slice(index).get()) {
       // don't break on utilities, just skip over them
       if (cmd.is('utility')) {
         continue
@@ -110,12 +130,12 @@ const create = function (Cypress, cy) {
       // them up with existing ones
       cmd.set('assertionIndex', 0)
 
-      if (cy.state('current') != null) {
-        cy.state('current').set('currentAssertionCommand', cmd)
+      if (state('current') != null) {
+        state('current').set('currentAssertionCommand', cmd)
       }
 
       return cmd.get('fn').originalFn.apply(
-        cy.state('ctx'),
+        state('ctx'),
         [subject].concat(cmd.get('args')),
       )
     })
@@ -138,7 +158,7 @@ const create = function (Cypress, cy) {
   const verifyUpcomingAssertions = function (subject, options = {}, callbacks = {}) {
     const cmds = getUpcomingAssertions()
 
-    cy.state('upcomingAssertions', cmds)
+    state('upcomingAssertions', cmds)
 
     // we're applying the default assertion in the
     // case where there are no upcoming assertion commands
@@ -233,7 +253,7 @@ const create = function (Cypress, cy) {
       }
 
       if (_.isFunction(onRetry)) {
-        return cy.retry(onRetry, options)
+        return retryFn(onRetry, options)
       }
     }
 
@@ -263,7 +283,7 @@ const create = function (Cypress, cy) {
         }
 
         // when we do immediately unbind this function
-        cy.state('onBeforeLog', null)
+        state('onBeforeLog', null)
 
         const insertNewLog = (log) => {
           cmd.log(log)
@@ -346,7 +366,7 @@ const create = function (Cypress, cy) {
         return insertNewLog(log)
       }
 
-      cy.state('onBeforeLog', setCommandLog)
+      state('onBeforeLog', setCommandLog)
 
       // send verify=true as the last arg
       return assertFn.apply(this, args.concat(true))
@@ -386,16 +406,16 @@ const create = function (Cypress, cy) {
     }
 
     const restore = () => {
-      cy.state('upcomingAssertions', [])
+      state('upcomingAssertions', [])
 
       // no matter what we need to
       // restore the assert fn
-      return cy.state('overrideAssert', undefined)
+      return state('overrideAssert', undefined)
     }
 
     // store this in case our test ends early
     // and we reset between tests
-    cy.state('overrideAssert', overrideAssert)
+    state('overrideAssert', overrideAssert)
 
     return Promise
     .reduce(fns, assertions, [subject])
@@ -464,19 +484,21 @@ const create = function (Cypress, cy) {
         // if our current command is an assertion type
         isAssertionType(current) ||
         // are we currently verifying assertions?
-        (cy.state('upcomingAssertions') && cy.state('upcomingAssertions').length > 0) ||
+        (state('upcomingAssertions') && state('upcomingAssertions').length > 0) ||
         // did the function have arguments
         functionHadArguments(current)
     }
 
-    _.extend(obj, {
+    _.extend(obj, logValues(value, actual, expected), {
       name: 'assert',
+      subject: logBigValue(value),
+      expected: logBigValue(expected),
+      actual: logBigValue(actual),
       // end:      true
       // snapshot: true
       message,
       passed,
       selector: value ? value.selector : undefined,
-      timeout: 0,
       type (current, subject) {
         // if our current command has arguments assume
         // we are an assertion that's involving the current
@@ -509,7 +531,7 @@ const create = function (Cypress, cy) {
   const assert = function (...args) {
     // if we've temporarily overriden assertions
     // then just bail early with this function
-    const fn = cy.state('overrideAssert') || assertFn
+    const fn = state('overrideAssert') || assertFn
 
     return fn.apply(this, args)
   }

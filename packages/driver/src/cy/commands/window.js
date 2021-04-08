@@ -4,7 +4,6 @@ const Promise = require('bluebird')
 const $errUtils = require('../../cypress/error_utils')
 
 const viewports = {
-  'macbook-16': '1536x960',
   'macbook-15': '1440x900',
   'macbook-13': '1280x800',
   'macbook-11': '1366x768',
@@ -13,9 +12,6 @@ const viewports = {
   'iphone-xr': '414x896',
   'iphone-x': '375x812',
   'iphone-6+': '414x736',
-  'iphone-se2': '375x667',
-  'iphone-8': '375x667',
-  'iphone-7': '375x667',
   'iphone-6': '375x667',
   'iphone-5': '320x568',
   'iphone-4': '320x480',
@@ -33,8 +29,8 @@ const validOrientations = ['landscape', 'portrait']
 // refresh would cause viewport to hang
 let currentViewport = null
 
-module.exports = (Commands, Cypress, cy, state) => {
-  const defaultViewport = _.pick(Cypress.config(), 'viewportWidth', 'viewportHeight')
+module.exports = (Commands, Cypress, cy, state, config) => {
+  const defaultViewport = _.pick(config(), 'viewportWidth', 'viewportHeight')
 
   // currentViewport could already be set due to previous runs
   currentViewport = currentViewport || defaultViewport
@@ -45,9 +41,7 @@ module.exports = (Commands, Cypress, cy, state) => {
     // need to restore prior to running the next test
     // after which we simply null and wait for the
     // next viewport change
-    const configDefaultViewport = _.pick(Cypress.config(), 'viewportWidth', 'viewportHeight')
-
-    setViewportAndSynchronize(configDefaultViewport.viewportWidth, configDefaultViewport.viewportHeight)
+    setViewportAndSynchronize(defaultViewport.viewportWidth, defaultViewport.viewportHeight)
   })
 
   const setViewportAndSynchronize = (width, height) => {
@@ -83,7 +77,6 @@ module.exports = (Commands, Cypress, cy, state) => {
 
       if (options.log) {
         options._log = Cypress.log({
-          timeout: options.timeout,
           options: userOptions,
         })
       }
@@ -108,7 +101,6 @@ module.exports = (Commands, Cypress, cy, state) => {
 
       if (options.log) {
         options._log = Cypress.log({
-          timeout: options.timeout,
           options: userOptions,
         })
       }
@@ -153,7 +145,6 @@ module.exports = (Commands, Cypress, cy, state) => {
 
       if (options.log) {
         options._log = Cypress.log({
-          timeout: options.timeout,
           options: userOptions,
         })
       }
@@ -211,7 +202,6 @@ module.exports = (Commands, Cypress, cy, state) => {
         const isPreset = typeof presetOrWidth === 'string'
 
         options._log = Cypress.log({
-          timeout: options.timeout,
           consoleProps () {
             const obj = {}
 

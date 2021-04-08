@@ -14,7 +14,7 @@ const { getIndexOfUserOptions } = require('../cy/options')
 const groupsOrTableRe = /^(groups|table)$/
 const parentOrChildRe = /parent|child/
 const SNAPSHOT_PROPS = 'id snapshots $el url coords highlightAttr scrollBy viewportWidth viewportHeight'.split(' ')
-const DISPLAY_PROPS = 'id alias aliasType callCount displayName end err event functionName hookId instrument isStubbed message method name numElements numResponses options referencesAlias renderProps state testId timeout type url visible wallClockStartedAt testCurrentRetry'.split(' ')
+const DISPLAY_PROPS = 'id actual alias aliasType callCount displayName end err event expected functionName hookName instrument isStubbed message method name numElements numResponses referencesAlias renderProps state subject testId type url visible options'.split(' ')
 const BLACKLIST_PROPS = 'snapshots'.split(' ')
 
 let delay = null
@@ -91,12 +91,10 @@ const countLogsByTests = function (tests = {}) {
 
   return _
   .chain(tests)
-  .flatMap((test) => {
-    return [test, test.prevAttempts]
-  })
-  .flatMap((tests) => {
-    return [].concat(tests.agents, tests.routes, tests.commands)
-  }).compact()
+  .map((test, key) => {
+    return [].concat(test.agents, test.routes, test.commands)
+  }).flatten()
+  .compact()
   .union([{ id: 0 }])
   .map('id')
   .max()
@@ -136,7 +134,6 @@ const defaults = function (state, config, obj) {
     }
 
     _.defaults(obj, {
-      timeout: config('defaultCommandTimeout'),
       event: false,
       renderProps () {
         return {}
@@ -159,11 +156,7 @@ const defaults = function (state, config, obj) {
     if (obj.message || obj.message === '') {
       obj.message = $utils.stringify(obj.message)
     } else {
-      // Sometimes, option argument isn't at the end of the list.
-      // The code below removes that option argument from the list and
-      // generates message.
-
-      let args = current?.get('args')
+      let args = current != null ? current.get('args') : undefined
 
       if (args) {
         const optionsIndex = getIndexOfUserOptions(current.get('name'), args)
@@ -186,32 +179,19 @@ const defaults = function (state, config, obj) {
 
   const runnable = state('runnable')
 
-  const getTestAttemptFromRunnable = (runnable) => {
-    if (!runnable) {
-      return
-    }
-
-    const t = $utils.getTestFromRunnable(runnable)
-
-    return t._currentRetry || 0
-  }
-
   return _.defaults(obj, {
     id: (counter += 1),
     state: 'pending',
     instrument: 'command',
     url: state('url'),
-    hookId: state('hookId'),
+    hookName: state('hookName'),
     testId: runnable ? runnable.id : undefined,
-    testCurrentRetry: getTestAttemptFromRunnable(state('runnable')),
     viewportWidth: state('viewportWidth'),
     viewportHeight: state('viewportHeight'),
     referencesAlias: undefined,
     alias: undefined,
     aliasType: undefined,
     message: undefined,
-    timeout: undefined,
-    wallClockStartedAt: new Date().toJSON(),
     options: null,
     renderProps () {
       return {}

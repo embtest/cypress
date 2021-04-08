@@ -12,6 +12,7 @@ const $errUtils = require('../cypress/error_utils')
 const $stackUtils = require('../cypress/stack_utils')
 const $chaiJquery = require('../cypress/chai_jquery')
 const chaiInspect = require('./chai/inspect')
+const { replaceToBigValueTags } = require('./big_value')
 
 // all words between single quotes
 const allPropertyWordsBetweenSingleQuotes = /('.*?')/g
@@ -130,8 +131,10 @@ chai.use((chai, u) => {
     })
   }
 
-  const replaceArgMessages = (args, str) => {
-    return _.reduce(args, (memo, value, index) => {
+  const replaceArgMessages = (args, values) => {
+    args = replaceToBigValueTags(args, values)
+
+    return _.reduce(args, (memo, value) => {
       if (_.isString(value)) {
         value = value
         .replace(allWordsBetweenCurlyBraces, '**$1**')
@@ -265,7 +268,7 @@ chai.use((chai, u) => {
       return (function (text) {
         let obj = this._obj
 
-        if (!($dom.isElement(obj))) {
+        if (!($dom.isJquery(obj) || $dom.isElement(obj))) {
           return _super.apply(this, arguments)
         }
 
@@ -341,12 +344,9 @@ chai.use((chai, u) => {
                 return `Not enough elements found. Found '${len1}', expected '${len2}'.`
               }
 
-              // if the user has specified a custom message,
-              // for example: expect($subject, 'Should have length').to.have.length(1)
-              // prefer that over our message
-              const message = chaiUtils.flag(this, 'message') ? e1.message : getLongLengthMessage(obj.length, length)
+              const newMessage = getLongLengthMessage(obj.length, length)
 
-              $errUtils.modifyErrMsg(e1, message, () => message)
+              $errUtils.modifyErrMsg(e1, newMessage, () => newMessage)
 
               throw e1
             }
@@ -419,6 +419,8 @@ chai.use((chai, u) => {
   }
 
   const captureUserInvocationStack = (specWindow, state, ssfi) => {
+    let userInvocationStack
+
     // we need a user invocation stack with the top line being the point where
     // the error occurred for the sake of the code frame
     // in chrome, stack lines from another frame don't appear in the
@@ -427,9 +429,13 @@ chai.use((chai, u) => {
     // because it doesn't have lines from the spec iframe)
     // in firefox, specWindow.Error has too many extra lines at the
     // beginning, but chai.AssertionError helps us winnow those down
-    const chaiInvocationStack = $stackUtils.hasCrossFrameStacks(specWindow) && (new chai.AssertionError('uis', {}, ssfi)).stack
+    if ($stackUtils.hasCrossFrameStacks(specWindow)) {
+      userInvocationStack = (new chai.AssertionError('uis', {}, ssfi)).stack
+    } else {
+      userInvocationStack = (new specWindow.Error()).stack
+    }
 
-    const userInvocationStack = $stackUtils.captureUserInvocationStack(specWindow.Error, chaiInvocationStack)
+    userInvocationStack = $stackUtils.normalizedUserInvocationStack(userInvocationStack)
 
     state('currentAssertionUserInvocationStack', userInvocationStack)
   }
@@ -441,7 +447,11 @@ chai.use((chai, u) => {
       const value = chaiUtils.flag(this, 'object')
       const expected = args[3]
 
-      const customArgs = replaceArgMessages(args, this._obj)
+      const customArgs = replaceArgMessages(args, {
+        subject: value,
+        expected,
+        actual: chaiUtils.getActual(this, args),
+      })
 
       let message = chaiUtils.getMessage(this, customArgs)
       const actual = chaiUtils.getActual(this, customArgs)

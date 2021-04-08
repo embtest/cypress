@@ -1,3 +1,4 @@
+import cs from 'classnames'
 import { action } from 'mobx'
 import { observer } from 'mobx-react'
 import PropTypes from 'prop-types'
@@ -6,7 +7,7 @@ import { render } from 'react-dom'
 // @ts-ignore
 import EQ from 'css-element-queries/src/ElementQueries'
 
-import { RunnablesErrorModel } from './runnables/runnable-error'
+import { Error } from './errors/an-error'
 import appState, { AppState } from './lib/app-state'
 import events, { Runner, Events } from './lib/events'
 import ForcedGcWarning from './lib/forced-gc-warning'
@@ -27,7 +28,7 @@ export interface ReporterProps {
   scroller: Scroller
   statsStore: StatsStore
   events: Events
-  error?: RunnablesErrorModel
+  error?: Error
   spec: Cypress.Cypress['spec']
 }
 
@@ -61,19 +62,29 @@ class Reporter extends Component<ReporterProps> {
     statsStore,
   }
 
-  constructor (props: ReporterProps) {
-    super(props)
+  componentWillMount () {
+    const { appState, autoScrollingEnabled, isInteractive, runnablesStore, runner, scroller, statsStore } = this.props
 
-    this.updateIsInteractive = this.updateIsInteractive.bind(this)
+    action('set:config:values', () => {
+      appState.setAutoScrolling(autoScrollingEnabled)
+      appState.setIsInteractive(isInteractive)
+    })()
 
-    this.updateIsInteractive()
+    this.props.events.init({
+      appState,
+      runnablesStore,
+      scroller,
+      statsStore,
+    })
+
+    this.props.events.listen(runner)
   }
 
   render () {
     const { appState } = this.props
 
     return (
-      <div className='reporter'>
+      <div className={cs('reporter', { 'is-running': appState.isRunning })}>
         <Header appState={appState} statsStore={this.props.statsStore} />
         <Runnables
           appState={appState}
@@ -87,10 +98,6 @@ class Reporter extends Component<ReporterProps> {
           events={this.props.events}/>
       </div>
     )
-  }
-
-  componentDidUpdate () {
-    this.updateIsInteractive()
   }
 
   componentDidMount () {
@@ -116,17 +123,6 @@ class Reporter extends Component<ReporterProps> {
   componentWillUnmount () {
     shortcuts.stop()
   }
-
-  // This component is loaded twice with isInteractive `undefined` and `true` in "open" mode
-  // Because of that, it should be called in constructor and componentDidUpdate
-  // to satisfy both e2e-tests and real use.
-  updateIsInteractive () {
-    const { appState, isInteractive } = this.props
-
-    action('set:config:values', () => {
-      appState.setIsInteractive(isInteractive)
-    })()
-  }
 }
 
 declare global {
@@ -137,11 +133,9 @@ declare global {
   }
 }
 
-// NOTE: this is for testing Cypress-in-Cypress
 if (window.Cypress) {
   window.state = appState
   window.render = (props) => {
-    // @ts-ignore
     render(<Reporter {...props as Required<ReporterProps>} />, document.getElementById('app'))
   }
 }

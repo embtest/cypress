@@ -25,7 +25,6 @@ module.exports = (Commands, Cypress, cy) => {
       if (options.log) {
         options._log = Cypress.log({
           $el: options.$el,
-          timeout: options.timeout,
           options: userOptions,
           consoleProps () {
             return {

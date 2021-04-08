@@ -3,6 +3,7 @@ import cs from 'classnames'
 import { action, observable } from 'mobx'
 import { observer } from 'mobx-react'
 import React, { Component, MouseEvent } from 'react'
+import 'regenerator-runtime/runtime'
 // @ts-ignore
 import Tooltip from '@cypress/react-tooltip'
 
@@ -13,8 +14,8 @@ import { TimeoutID } from '../lib/types'
 import runnablesStore, { RunnablesStore } from '../runnables/runnables-store'
 import { Alias, AliasObject } from '../instruments/instrument-model'
 
-import CommandModel from './command-model'
-import { Message } from './message'
+import CommandModel, { TestedValueObject } from './command-model'
+import { Message, DetailViewer } from './message'
 
 const displayName = (model: CommandModel) => model.displayName || model.name
 const nameClassName = (name: string) => name.replace(/(\s+)/g, '-')
@@ -95,23 +96,6 @@ const Aliases = observer(({ model, aliasesWithDuplicates }: AliasesProps) => {
   )
 })
 
-interface ProgressProps {
-  model: CommandModel
-}
-
-const Progress = observer(({ model }: ProgressProps) => {
-  const timeElapsed = Date.now() - new Date(model.wallClockStartedAt).getTime()
-  const timeRemaining = model.timeout ? model.timeout - timeElapsed : 0
-  const percentageRemaining = timeRemaining / model.timeout || 0
-
-  // we add a key to the span to ensure a rerender and restart of the animation on change
-  return (
-    <div className='command-progress'>
-      <span style={{ animationDuration: `${timeRemaining}ms`, transform: `scaleX(${percentageRemaining})` }} key={timeRemaining} />
-    </div>
-  )
-})
-
 interface Props {
   model: CommandModel
   aliasesWithDuplicates: Array<Alias> | null
@@ -123,6 +107,9 @@ interface Props {
 @observer
 class Command extends Component<Props> {
   @observable isOpen = false
+  @observable showSubject = false
+  @observable showExpected = false
+  @observable showActual = false
   private _showTimeout?: TimeoutID
 
   static defaultProps = {
@@ -146,6 +133,7 @@ class Command extends Component<Props> {
             'command-is-event': !!model.event,
             'command-is-invisible': model.visible != null && !model.visible,
             'command-has-num-elements': model.state !== 'pending' && model.numElements != null,
+            'command-other-pinned': this._isOtherCommandPinned(),
             'command-is-pinned': this._isPinned(),
             'command-with-indicator': !!model.renderProps.indicator,
             'command-scaled': message && message.length > 100,
@@ -165,41 +153,57 @@ class Command extends Component<Props> {
           shouldShowMessage={this._shouldShowClickMessage}
         >
           <div className='command-wrapper'>
-            <div className='command-wrapper-text'>
-              <span className='command-number'>
-                <i className='fas fa-spinner fa-spin' />
-                <span>{model.number || ''}</span>
-              </span>
-              <span className='command-pin'>
-                <i className='fas fa-thumbtack' />
-              </span>
-              <span className='command-expander' onClick={this._toggleOpen}>
-                <i className='fas' />
-              </span>
-              <span className='command-method'>
-                <span>{model.event ? `(${displayName(model)})` : displayName(model)}</span>
-              </span>
-              <span className='command-message'>
-                {model.referencesAlias ? <AliasesReferences model={model} aliasesWithDuplicates={aliasesWithDuplicates} /> : <Message model={model} />}
-              </span>
-              <span className='command-controls'>
-                <Tooltip placement='top' title={visibleMessage(model)} className='cy-tooltip'>
-                  <i className='command-invisible far fa-eye-slash' />
+            <span className='command-number'>
+              <i className='fas fa-spinner fa-spin' />
+              <span>{model.number || ''}</span>
+            </span>
+            <span className='command-pin'>
+              <i className='fas fa-thumbtack' />
+            </span>
+            <span className='command-expander' onClick={this._toggleOpen}>
+              <i className='fas' />
+            </span>
+            <span className='command-method'>
+              <span>{model.event ? `(${displayName(model)})` : displayName(model)}</span>
+            </span>
+            <span className='command-message'>
+              {
+                model.referencesAlias
+                  ? <AliasesReferences model={model} aliasesWithDuplicates={aliasesWithDuplicates} />
+                  : <Message model={model} toggleSubject={this._toggleSubject} toggleExpected={this._toggleExpected} toggleActual={this._toggleActual} />
+              }
+            </span>
+            <span className='command-controls'>
+              <Tooltip placement='top' title={visibleMessage(model)} className='cy-tooltip'>
+                <i className='command-invisible far fa-eye-slash' />
+              </Tooltip>
+              <Tooltip placement='top' title={`${model.numElements} matched elements`} className='cy-tooltip'>
+                <span className='num-elements'>{model.numElements}</span>
+              </Tooltip>
+              <span className='alias-container'>
+                <Aliases model={model} aliasesWithDuplicates={aliasesWithDuplicates} />
+                <Tooltip placement='top' title={`This event occurred ${model.numDuplicates} times`} className='cy-tooltip'>
+                  <span className={cs('num-duplicates', { 'has-alias': model.alias })}>{model.numDuplicates}</span>
                 </Tooltip>
-                <Tooltip placement='top' title={`${model.numElements} matched elements`} className='cy-tooltip'>
-                  <span className='num-elements'>{model.numElements}</span>
-                </Tooltip>
-                <span className='alias-container'>
-                  <Aliases model={model} aliasesWithDuplicates={aliasesWithDuplicates} />
-                  <Tooltip placement='top' title={`This event occurred ${model.numDuplicates} times`} className='cy-tooltip'>
-                    <span className={cs('num-duplicates', { 'has-alias': model.alias })}>{model.numDuplicates}</span>
-                  </Tooltip>
-                </span>
               </span>
-            </div>
-            <Progress model={model} />
+            </span>
           </div>
         </FlashOnClick>
+        {
+          this.showSubject
+            ? <DetailViewer name='subject' target={model.subject as TestedValueObject} />
+            : null
+        }
+        {
+          this.showExpected
+            ? <DetailViewer name='expected' target={model.expected as TestedValueObject} />
+            : null
+        }
+        {
+          this.showActual
+            ? <DetailViewer name='actual' target={model.actual as TestedValueObject} />
+            : null
+        }
         {this._duplicates()}
       </li>
     )
@@ -230,6 +234,12 @@ class Command extends Component<Props> {
     return this.props.appState.pinnedSnapshotId === this.props.model.id
   }
 
+  _isOtherCommandPinned () {
+    const pinnedId = this.props.appState.pinnedSnapshotId
+
+    return pinnedId != null && pinnedId !== this.props.model.id
+  }
+
   _shouldShowClickMessage = () => {
     return !this.props.appState.isRunning && this._isPinned()
   }
@@ -238,6 +248,24 @@ class Command extends Component<Props> {
     e.stopPropagation()
 
     this.isOpen = !this.isOpen
+  }
+
+  @action _toggleSubject = (e: MouseEvent) => {
+    e.stopPropagation()
+
+    this.showSubject = !this.showSubject
+  }
+
+  @action _toggleExpected = (e: MouseEvent) => {
+    e.stopPropagation()
+
+    this.showExpected = !this.showExpected
+  }
+
+  @action _toggleActual = (e: MouseEvent) => {
+    e.stopPropagation()
+
+    this.showActual = !this.showActual
   }
 
   @action _onClick = () => {
@@ -299,6 +327,6 @@ class Command extends Component<Props> {
   }
 }
 
-export { Aliases, AliasesReferences, Message, Progress }
+export { Aliases, AliasesReferences, Message }
 
 export default Command

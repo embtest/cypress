@@ -4,7 +4,7 @@ const Promise = require('bluebird')
 const $dom = require('../../dom')
 const $errUtils = require('../../cypress/error_utils')
 
-module.exports = (Commands, Cypress, cy, state) => {
+module.exports = (Commands, Cypress, cy) => {
   Commands.addAll({ prevSubject: 'optional' }, {
     end () {
       return null
@@ -17,22 +17,6 @@ module.exports = (Commands, Cypress, cy, state) => {
     },
 
     log (msg, args) {
-      // https://github.com/cypress-io/cypress/issues/8084
-      // The return value of cy.log() corrupts the command stack, so cy.then() returned the wrong value
-      // when cy.log() is used inside it.
-      // The code below restore the stack when cy.log() is injected in cy.then().
-      if (state('current').get('injected')) {
-        const restoreCmdIndex = state('index') + 1
-
-        cy.queue.splice(restoreCmdIndex, 0, {
-          args: [state('subject')],
-          name: 'log-restore',
-          fn: (subject) => subject,
-        })
-
-        state('index', restoreCmdIndex)
-      }
-
       Cypress.log({
         end: true,
         snapshot: true,
@@ -62,7 +46,6 @@ module.exports = (Commands, Cypress, cy, state) => {
       if (options.log !== false) {
         options._log = Cypress.log({
           message: arg,
-          timeout: options.timeout,
           options: userOptions,
         })
 
