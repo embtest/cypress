@@ -1,10 +1,13 @@
 const _ = require('lodash')
 const R = require('ramda')
+const EE = require('events')
 const path = require('path')
 const Promise = require('bluebird')
 const commitInfo = require('@cypress/commit-info')
 const la = require('lazy-ass')
 const check = require('check-more-types')
+const tsnode = require('ts-node')
+const resolve = require('resolve')
 const scaffoldDebug = require('debug')('cypress:server:scaffold')
 const debug = require('debug')('cypress:server:project')
 const cwd = require('./cwd')
@@ -27,14 +30,14 @@ const fs = require('./util/fs')
 const keys = require('./util/keys')
 const settings = require('./util/settings')
 const specsUtil = require('./util/specs')
-const AsyncEE = require('./util/AsyncEE').default
 const { escapeFilenameInUrl } = require('./util/escape_filename')
+const tsNodeOptions = require('./util/ts-node-options')
 
 const localCwd = cwd()
 
 const multipleForwardSlashesRe = /[^:\/\/](\/{2,})/g
 
-class Project extends AsyncEE {
+class Project extends EE {
   constructor (projectRoot) {
     super()
 
@@ -100,6 +103,24 @@ class Project extends AsyncEE {
         return scaffold.plugins(path.dirname(cfg.pluginsFile), cfg)
       }
     }).then((cfg) => {
+      try {
+        const tsPath = resolve.sync('typescript', {
+          basedir: this.projectRoot,
+        })
+
+        const tsOptions = tsNodeOptions.getTsNodeOptions(tsPath)
+
+        debug('typescript path: %s', tsPath)
+        debug('registering project TS with options %o', tsOptions)
+
+        tsnode.register(tsOptions)
+      } catch (e) {
+        debug(`typescript doesn't exist. ts-node setup failed.`)
+        debug('error message %s', e.message)
+      }
+
+      return cfg
+    }).then((cfg) => {
       return this._initPlugins(cfg, options)
       .then((modifiedCfg) => {
         debug('plugin config yielded: %o', modifiedCfg)
@@ -152,10 +173,10 @@ class Project extends AsyncEE {
 
   _initPlugins (cfg, options) {
     // only init plugins with the
-    // allowed config values to
+    // whitelisted config values to
     // prevent tampering with the
     // internals and breaking cypress
-    cfg = config.allowed(cfg)
+    cfg = config.whitelist(cfg)
 
     return plugins.init(cfg, {
       projectRoot: this.projectRoot,
@@ -186,6 +207,7 @@ class Project extends AsyncEE {
 
     this.spec = null
     this.browser = null
+    this.bail = false
 
     return Promise.try(() => {
       if (this.automation) {
@@ -341,24 +363,21 @@ class Project extends AsyncEE {
         this.emit('socket:connected', id)
       },
 
-      onSetRunnables: async (runnables) => {
+      onSetRunnables (runnables) {
         debug('received runnables %o', runnables)
-
-        let response = null
-
-        await this.emitThen('set:runnables', runnables, (res) => {
-          response = res
-        })
 
         if (reporter != null) {
           reporter.setRunnables(runnables)
         }
-
-        return response
       },
 
       onMocha: (event, runnable) => {
         debug('onMocha', event)
+
+        if (event === 'fail' && this.bail) {
+          this.server.bail()
+        }
+
         // bail if we dont have a
         // reporter instance
         if (!reporter) {
@@ -387,6 +406,10 @@ class Project extends AsyncEE {
   setCurrentSpecAndBrowser (spec, browser) {
     this.spec = spec
     this.browser = browser
+  }
+
+  setBail (bail) {
+    this.bail = bail
   }
 
   getCurrentSpecAndBrowser () {
@@ -488,8 +511,6 @@ class Project extends AsyncEE {
   }
 
   getSpecUrl (absoluteSpecPath, specType) {
-    debug('get spec url: %s for spec type %s', absoluteSpecPath, specType)
-
     return this.getConfig()
     .then((cfg) => {
       // if we don't have a absoluteSpecPath or its __all
@@ -527,9 +548,9 @@ class Project extends AsyncEE {
     // example:
     //
     // /Users/bmann/Dev/cypress-app/.projects/cypress/integration
-    // /Users/bmann/Dev/cypress-app/.projects/cypress/integration/foo.js
+    // /Users/bmann/Dev/cypress-app/.projects/cypress/integration/foo.coffee
     //
-    // becomes /integration/foo.js
+    // becomes /integration/foo.coffee
 
     const folderToUse = type === 'integration' ? integrationFolder : componentFolder
 

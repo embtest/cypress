@@ -14,9 +14,7 @@ const files = require('./files')
 const fixture = require('./fixture')
 const errors = require('./errors')
 const preprocessor = require('./plugins/preprocessor')
-const netStubbing = require('@packages/net-stubbing')
 const firefoxUtil = require('./browsers/firefox-util').default
-const session = require('./session')
 
 const runnerEvents = [
   'reporter:restart:test:run',
@@ -123,10 +121,6 @@ class Socket {
     return socket && socket.connected
   }
 
-  toDriver (event, ...data) {
-    return this.io && this.io.emit(event, ...data)
-  }
-
   onAutomation (socket, message, data, id) {
     // instead of throwing immediately here perhaps we need
     // to make this more resilient by automatically retrying
@@ -196,8 +190,6 @@ class Socket {
     const automationRequest = (message, data) => {
       return automation.request(message, data, onAutomationClientRequestCallback)
     }
-
-    const getFixture = (path, opts) => fixture.get(config.fixturesFolder, path, opts)
 
     return this.io.on('connection', (socket) => {
       debug('socket connected')
@@ -371,7 +363,7 @@ class Socket {
 
         debug('backend:request %o', { eventName, args })
 
-        const backendRequest = () => {
+        const backendRequest = function () {
           switch (eventName) {
             case 'preserve:run:state':
               existingState = args[0]
@@ -391,30 +383,15 @@ class Socket {
             case 'firefox:force:gc':
               return firefoxUtil.collectGarbage()
             case 'get:fixture':
-              return getFixture(args[0], args[1])
+              return fixture.get(config.fixturesFolder, args[0], args[1])
             case 'read:file':
               return files.readFile(config.projectRoot, args[0], args[1])
             case 'write:file':
               return files.writeFile(config.projectRoot, args[0], args[1], args[2])
-            case 'net':
-              return netStubbing.onNetEvent({
-                eventName: args[0],
-                frame: args[1],
-                state: options.netStubbingState,
-                socket: this,
-                getFixture,
-                args,
-              })
             case 'exec':
               return exec.run(config.projectRoot, args[0])
             case 'task':
               return task.run(config.pluginsFile, args[0])
-            case 'save:session':
-              return session.saveSession(args[0])
-            case 'get:session':
-              return session.getSession(args[0])
-            case 'get:fetchedHTMLOrigins':
-              return options.getRenderedHTMLOrigins()
             default:
               throw new Error(
                 `You requested a backend event we cannot handle: ${eventName}`,
@@ -496,6 +473,10 @@ class Socket {
 
   changeToUrl (url) {
     return this.toRunner('change:to:url', url)
+  }
+
+  bail () {
+    return this.toRunner('bail:fail')
   }
 
   close () {

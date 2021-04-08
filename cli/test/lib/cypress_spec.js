@@ -68,24 +68,6 @@ describe('cypress', function () {
     })
   })
 
-  context('.run fails to write results file', function () {
-    it('resolves with error object', function () {
-      const outputPath = path.join(os.tmpdir(), 'cypress/monorepo/cypress_spec/output.json')
-
-      sinon.stub(tmp, 'fileAsync').resolves(outputPath)
-      sinon.stub(run, 'start').resolves(2)
-      sinon.stub(fs, 'readJsonAsync').withArgs(outputPath).resolves()
-
-      return cypress.run().then((result) => {
-        expect(result).to.deep.equal({
-          status: 'failed',
-          failures: 2,
-          message: 'Could not find Cypress test run results',
-        })
-      })
-    })
-  })
-
   context('.run', function () {
     let outputPath
 
@@ -189,89 +171,16 @@ describe('cypress', function () {
         expect(args).to.deep.eq(opts)
       })
     })
-  })
 
-  context('cli', function () {
-    describe('.parseRunArguments', function () {
-      it('parses CLI cypress run arguments', async () => {
-        const args = 'cypress run --browser chrome --spec my/test/spec.js'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
+    it('passes bail: true', () => {
+      const opts = {
+        bail: true,
+      }
 
-        expect(options).to.deep.equal({
-          browser: 'chrome',
-          spec: 'my/test/spec.js',
-        })
-      })
-
-      it('parses CLI cypress run shorthand arguments', async () => {
-        const args = 'cypress run -b firefox -p 5005 --headed --quiet'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        expect(options).to.deep.equal({
-          browser: 'firefox',
-          port: 5005,
-          headed: true,
-          quiet: true,
-        })
-      })
-
-      it('coerces --record and --dev', async () => {
-        const args = 'cypress run --record false --dev true'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        expect(options).to.deep.equal({
-          record: false,
-          dev: true,
-        })
-      })
-
-      it('coerces --config-file false to boolean', async () => {
-        const args = 'cypress run --config-file false'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        expect(options).to.deep.equal({
-          configFile: false,
-        })
-      })
-
-      it('coerces --config-file cypress.json to string', async () => {
-        const args = 'cypress run --config-file cypress.json'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        expect(options).to.deep.equal({
-          configFile: 'cypress.json',
-        })
-      })
-
-      it('parses config file false', async () => {
-        const args = 'cypress run --config-file false'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        expect(options).to.deep.equal({
-          configFile: false,
-        })
-      })
-
-      it('parses config', async () => {
-        const args = 'cypress run --config baseUrl=localhost,video=true'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        // we don't need to convert the config into an object
-        // since the logic inside cypress.run handles that
-        expect(options).to.deep.equal({
-          config: 'baseUrl=localhost,video=true',
-        })
-      })
-
-      it('parses env', async () => {
-        const args = 'cypress run --env MY_NUMBER=42,MY_FLAG=true'.split(' ')
-        const options = await cypress.cli.parseRunArguments(args)
-
-        // we don't need to convert the environment into an object
-        // since the logic inside cypress.run handles that
-        expect(options).to.deep.equal({
-          env: 'MY_NUMBER=42,MY_FLAG=true',
-        })
+      return cypress.run(opts)
+      .then(getStartArgs)
+      .then((args) => {
+        expect(args).to.deep.eq(opts)
       })
     })
   })

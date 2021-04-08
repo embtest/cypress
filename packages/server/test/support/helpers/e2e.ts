@@ -15,15 +15,15 @@ const snapshot = require('snap-shot-it')
 const debug = require('debug')('cypress:support:e2e')
 const httpsProxy = require('@packages/https-proxy')
 const Fixtures = require('./fixtures')
-const { fs } = require(`${root}../lib/util/fs`)
-const { allowDestroy } = require(`${root}../lib/util/server_destroy`)
+const fs = require(`${root}../lib/util/fs`)
+const allowDestroy = require(`${root}../lib/util/server_destroy`)
 const cypress = require(`${root}../lib/cypress`)
 const screenshots = require(`${root}../lib/screenshots`)
 const videoCapture = require(`${root}../lib/video_capture`)
 const settings = require(`${root}../lib/util/settings`)
 
 // mutates mocha test runner - needed for `test.titlePath`
-require(`${root}../lib/project-e2e`)
+require(`${root}../lib/project`)
 
 cp = Bluebird.promisifyAll(cp)
 
@@ -43,10 +43,6 @@ const browserNameVersionRe = /(Browser\:\s+)(Custom |)(Electron|Chrome|Canary|Ch
 const availableBrowsersRe = /(Available browsers found on your system are:)([\s\S]+)/g
 const crossOriginErrorRe = /(Blocked a frame .* from accessing a cross-origin frame.*|Permission denied.*cross-origin object.*)/gm
 const whiteSpaceBetweenNewlines = /\n\s+\n/
-const retryDuration = /Timed out retrying after (\d+)ms/g
-const escapedRetryDuration = /TORA(\d+)/g
-
-export const STDOUT_DURATION_IN_TABLES_RE = /(\s+?)(\d+ms|\d+:\d+:?\d+)/g
 
 // this captures an entire stack trace and replaces it with [stack trace lines]
 // so that the stdout can contain stack traces of different lengths
@@ -86,11 +82,6 @@ const replaceDurationFromReporter = (str, p1, p2, p3) => {
 }
 
 const replaceNodeVersion = (str, p1, p2, p3) => _.padEnd(`${p1}X (/foo/bar/node)`, (p1.length + p2.length + p3.length))
-
-const replaceCypressVersion = (str, p1, p2) => {
-  // Cypress: 12.10.10 -> Cypress: 1.2.3 (handling padding)
-  return _.padEnd(`${p1}1.2.3`, (p1.length + p2.length))
-}
 
 // when swapping out the duration, ensure we pad the
 // full length of the duration so it doesn't shift content
@@ -156,15 +147,11 @@ const normalizeStdout = function (str, options: any = {}) {
   .replace(browserNameVersionRe, replaceBrowserName)
   // numbers in parenths
   .replace(/\s\(\d+([ms]|ms)\)/g, '')
-  // escape "Timed out retrying" messages
-  .replace(retryDuration, 'TORA$1')
   // 12:35 -> XX:XX
-  .replace(STDOUT_DURATION_IN_TABLES_RE, replaceDurationInTables)
-  // restore "Timed out retrying" messages
-  .replace(escapedRetryDuration, 'Timed out retrying after $1ms')
+  .replace(/(\s+?)(\d+ms|\d+:\d+:?\d+)/g, replaceDurationInTables)
   .replace(/(coffee|js)-\d{3}/g, '$1-456')
   // Cypress: 2.1.0 -> Cypress: 1.2.3
-  .replace(/(Cypress\:\s+)(\d+\.\d+\.\d+)/g, replaceCypressVersion)
+  .replace(/(Cypress\:\s+)(\d\.\d\.\d)/g, '$11.2.3')
   // Node Version: 10.2.3 (Users/jane/node) -> Node Version: X (foo/bar/node)
   .replace(/(Node Version\:\s+v)(\d+\.\d+\.\d+)( \(.*\)\s+)/g, replaceNodeVersion)
   // 15 seconds -> X second
@@ -207,10 +194,6 @@ const startServer = function (obj) {
   allowDestroy(srv)
 
   app.use(morgan('dev'))
-
-  if (obj.cors) {
-    app.use(require('cors')())
-  }
 
   const s = obj.static
 
@@ -416,6 +399,7 @@ const e2e = {
 
       if (process.env.NO_EXIT) {
         Fixtures.scaffoldWatch()
+        process.env.CYPRESS_INTERNAL_E2E_TESTS
       }
 
       sinon.stub(process, 'exit')
@@ -453,14 +437,6 @@ const e2e = {
   },
 
   options (ctx, options = {}) {
-    if (options.inspectBrk != null) {
-      throw new Error(`
-      passing { inspectBrk: true } to e2e options is no longer supported
-      Please pass the --cypress-inspect-brk flag to the test command instead
-      e.g. "yarn test test/e2e/1_async_timeouts_spec.js --cypress-inspect-brk"
-      `)
-    }
-
     _.defaults(options, {
       browser: 'electron',
       headed: process.env.HEADED || false,
@@ -471,7 +447,6 @@ const e2e = {
       sanitizeScreenshotDimensions: false,
       normalizeStdoutAvailableBrowsers: true,
       noExit: process.env.NO_EXIT,
-      inspectBrk: process.env.CYPRESS_INSPECT_BRK,
     })
 
     if (options.exit != null) {
@@ -515,12 +490,7 @@ const e2e = {
       // hides a user warning to go through NPM module
       `--cwd=${process.cwd()}`,
       `--run-project=${options.project}`,
-      `--testingType=e2e`,
     ]
-
-    if (options.testingType === 'component') {
-      args.push('--component-testing')
-    }
 
     if (options.spec) {
       args.push(`--spec=${options.spec}`)
@@ -549,6 +519,10 @@ const e2e = {
 
     if (options.group) {
       args.push(`--group=${options.group}`)
+    }
+
+    if (options.bail) {
+      args.push(`--bail`)
     }
 
     if (options.ciBuildId) {
@@ -644,10 +618,6 @@ const e2e = {
       ctx.skip()
     }
 
-    if (options.stubPackage) {
-      Fixtures.installStubPackage(options.project, options.stubPackage)
-    }
-
     args = ['index.js'].concat(args)
 
     let stdout = ''
@@ -726,8 +696,6 @@ const e2e = {
           LINES: 24,
         })
         .defaults({
-          // match CircleCI's filesystem limits, so screenshot names in snapshots match
-          CYPRESS_MAX_SAFE_FILENAME_BYTES: 242,
           FAKE_CWD_PATH: '/XXX/XXX/XXX',
           DEBUG_COLORS: '1',
           // prevent any Compression progress
@@ -758,13 +726,8 @@ const e2e = {
       // pipe these to our current process
       // so we can see them in the terminal
       // color it so we can tell which is test output
-      sp.stdout
-      .pipe(ColorOutput())
-      .pipe(process.stdout)
-
-      sp.stderr
-      .pipe(ColorOutput())
-      .pipe(process.stderr)
+      sp.stdout.pipe(ColorOutput()).pipe(process.stdout)
+      sp.stderr.pipe(ColorOutput()).pipe(process.stderr)
 
       sp.stdout.on('data', (buf) => stdout += buf.toString())
       sp.stderr.on('data', (buf) => stderr += buf.toString())
@@ -788,28 +751,6 @@ const e2e = {
 </html>\
 `)
     }
-  },
-
-  normalizeWebpackErrors (stdout) {
-    return stdout
-    .replace(/using description file: .* \(relative/g, 'using description file: [..] (relative')
-    .replace(/Module build failed \(from .*\)/g, 'Module build failed (from [..])')
-  },
-
-  normalizeRuns (runs) {
-    runs.forEach((run) => {
-      run.tests.forEach((test) => {
-        test.attempts.forEach((attempt) => {
-          const codeFrame = attempt.error && attempt.error.codeFrame
-
-          if (codeFrame) {
-            codeFrame.absoluteFile = codeFrame.absoluteFile.split(pathUpToProjectName).join('/foo/bar/.projects')
-          }
-        })
-      })
-    })
-
-    return runs
   },
 }
 

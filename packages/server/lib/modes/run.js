@@ -1,4 +1,4 @@
-/* eslint-disable no-console, @cypress/dev/arrow-body-multiline-braces  */
+/* eslint-disable no-console */
 const _ = require('lodash')
 const la = require('lazy-ass')
 const pkg = require('@packages/root')
@@ -16,7 +16,6 @@ const Reporter = require('../reporter')
 const browserUtils = require('../browsers')
 const openProject = require('../open_project')
 const videoCapture = require('../video_capture')
-const runEvents = require('../plugins/run_events')
 const fs = require('../util/fs')
 const env = require('../util/env')
 const trash = require('../util/trash')
@@ -31,7 +30,6 @@ const electronApp = require('../util/electron-app')
 const settings = require('../util/settings')
 const chromePolicyCheck = require('../util/chrome_policy_check')
 const experiments = require('../experiments')
-const objUtils = require('../util/obj_utils')
 
 const DELAY_TO_LET_VIDEO_FINISH_MS = 1000
 
@@ -634,11 +632,10 @@ const trashAssets = Promise.method((config = {}) => {
     return
   }
 
-  return Promise.all([
+  return Promise.join(
     trash.folder(config.videosFolder),
     trash.folder(config.screenshotsFolder),
-    trash.folder(config.downloadsFolder),
-  ])
+  )
   .catch((err) => {
     // dont make trashing assets fail the build
     return errors.warning('CANNOT_TRASH_ASSETS', err.stack)
@@ -816,7 +813,7 @@ module.exports = {
     console.log('')
   },
 
-  async postProcessRecording (name, cname, videoCompression, shouldUploadVideo, quiet, ffmpegChaptersConfig) {
+  async postProcessRecording (name, cname, videoCompression, shouldUploadVideo, quiet) {
     debug('ending the video recording %o', { name, videoCompression, shouldUploadVideo })
 
     // once this ended promises resolves
@@ -828,7 +825,7 @@ module.exports = {
     }
 
     function continueProcessing (onProgress = undefined) {
-      return videoCapture.process(name, cname, videoCompression, ffmpegChaptersConfig, onProgress)
+      return videoCapture.process(name, cname, videoCompression, onProgress)
     }
 
     if (quiet) {
@@ -912,23 +909,14 @@ module.exports = {
   },
 
   launchBrowser (options = {}) {
-    const { browser, spec, writeVideoFrame, project, screenshots, projectRoot, onError } = options
+    const { bail, browser, spec, writeVideoFrame, project, screenshots, projectRoot, onError } = options
 
     const browserOpts = getDefaultBrowserOptsByFamily(browser, project, writeVideoFrame, onError)
 
     browserOpts.automationMiddleware = {
       onAfterResponse: (message, data, resp) => {
         if (message === 'take:screenshot' && resp) {
-          const existingScreenshot = _.findIndex(screenshots, { path: resp.path })
-
-          if (existingScreenshot !== -1) {
-            // NOTE: saving screenshots to the same path will overwrite the previous one
-            // so we shouldn't report more screenshots than exist on disk.
-            // this happens when cy.screenshot is used in a retried test
-            screenshots.splice(existingScreenshot, 1, this.screenshotMetadata(data, resp))
-          } else {
-            screenshots.push(this.screenshotMetadata(data, resp))
-          }
+          screenshots.push(this.screenshotMetadata(data, resp))
         }
 
         return resp
@@ -937,6 +925,7 @@ module.exports = {
 
     const warnings = {}
 
+    browserOpts.bail = bail
     browserOpts.projectRoot = projectRoot
 
     browserOpts.onWarning = (err) => {
@@ -1081,7 +1070,7 @@ module.exports = {
   },
 
   waitForTestsToFinishRunning (options = {}) {
-    const { project, screenshots, startedVideoCapture, endVideoCapture, videoName, compressedVideoName, videoCompression, videoUploadOnPasses, exit, spec, estimated, quiet, config } = options
+    const { project, screenshots, startedVideoCapture, endVideoCapture, videoName, compressedVideoName, videoCompression, videoUploadOnPasses, exit, spec, estimated, quiet, bail } = options
 
     // https://github.com/cypress-io/cypress/issues/2370
     // delay 1 second if we're recording a video to give
@@ -1091,8 +1080,8 @@ module.exports = {
 
     return this.listenForProjectEnd(project, exit)
     .delay(delay)
-    .then(async (results) => {
-      _.defaults(results, {
+    .then(async (obj) => {
+      _.defaults(obj, {
         error: null,
         hooks: null,
         tests: null,
@@ -1102,23 +1091,41 @@ module.exports = {
       })
 
       if (startedVideoCapture) {
-        results.video = videoName
+        obj.video = videoName
       }
 
       if (screenshots) {
-        results.screenshots = screenshots
+        obj.screenshots = screenshots
       }
 
-      results.spec = spec
+      obj.spec = spec
 
-      const { tests, stats } = results
-      const attempts = _.flatMap(tests, (test) => test.attempts)
+      const finish = () => {
+        return obj
+      }
+
+      if (!quiet) {
+        this.displayResults(obj, estimated)
+        if (screenshots && screenshots.length) {
+          this.displayScreenshots(screenshots)
+        }
+      }
+
+      const { tests, stats } = obj
+
+      const hasFailingTests = _.get(stats, 'failures') > 0
 
       // if we have a video recording
       if (startedVideoCapture && tests && tests.length) {
         // always set the video timestamp on tests
-        Reporter.setVideoTimestamp(startedVideoCapture, attempts)
+        obj.tests = Reporter.setVideoTimestamp(startedVideoCapture, tests)
       }
+
+      // we should upload the video if we upload on passes (by default)
+      // or if we have any failures and have started the video
+      const suv = Boolean(videoUploadOnPasses === true || (startedVideoCapture && hasFailingTests))
+
+      obj.shouldUploadVideo = suv
 
       let videoCaptureFailed = false
 
@@ -1128,53 +1135,28 @@ module.exports = {
         .catch(warnVideoRecordingFailed)
       }
 
-      await runEvents.execute('after:spec', config, spec, results)
-
-      const videoExists = videoName ? await fs.pathExists(videoName) : false
-
-      if (startedVideoCapture && !videoExists) {
-        // the video file no longer exists at the path where we expect it,
-        // likely because the user deleted it in the after:spec event
-        errors.warning('VIDEO_DOESNT_EXIST', videoName)
-
-        results.video = null
-      }
-
-      const hasFailingTests = _.get(stats, 'failures') > 0
-      // we should upload the video if we upload on passes (by default)
-      // or if we have any failures and have started the video
-      const shouldUploadVideo = videoUploadOnPasses === true || Boolean((startedVideoCapture && hasFailingTests))
-
-      results.shouldUploadVideo = shouldUploadVideo
-
-      if (!quiet) {
-        this.displayResults(results, estimated)
-        if (screenshots && screenshots.length) {
-          this.displayScreenshots(screenshots)
-        }
-      }
-
       // always close the browser now as opposed to letting
       // it exit naturally with the parent process due to
       // electron bug in windows
       debug('attempting to close the browser')
       await openProject.closeBrowser()
 
-      if (videoExists && endVideoCapture && !videoCaptureFailed) {
-        const ffmpegChaptersConfig = videoCapture.generateFfmpegChaptersConfig(results.tests)
-
+      if (endVideoCapture && !videoCaptureFailed) {
         await this.postProcessRecording(
           videoName,
           compressedVideoName,
           videoCompression,
-          shouldUploadVideo,
+          suv,
           quiet,
-          ffmpegChaptersConfig,
         )
         .catch(warnVideoRecordingFailed)
       }
 
-      return results
+      if (hasFailingTests && bail) {
+        errors.throw('BAILING_FAILED_TEST')
+      }
+
+      return finish()
     })
   },
 
@@ -1183,7 +1165,6 @@ module.exports = {
       screenshotId: random.id(),
       name: data.name || null,
       testId: data.testId,
-      testAttemptIndex: data.testAttemptIndex,
       takenAt: resp.takenAt,
       path: resp.path,
       height: resp.dimensions.height,
@@ -1243,39 +1224,22 @@ module.exports = {
         displaySpecHeader(spec.name, index + 1, length, estimated)
       }
 
-      return this.runSpec(config, spec, options, estimated)
+      return this.runSpec(spec, options, estimated)
       .get('results')
       .tap((results) => {
         return debug('spec results %o', results)
       })
     }
 
-    const beforeRunDetails = {
-      browser,
-      config,
-      cypressVersion: pkg.version,
-      group,
-      parallel,
-      runUrl,
+    return iterateThroughSpecs({
       specs,
-      specPattern,
-      system: _.pick(sys, 'osName', 'osVersion'),
-      tag,
-    }
-
-    return runEvents.execute('before:run', config, beforeRunDetails)
-    .then(() => {
-      return iterateThroughSpecs({
-        specs,
-        config,
-        parallel,
-        runEachSpec,
-        afterSpecRun,
-        beforeSpecRun,
-      })
+      config,
+      parallel,
+      runEachSpec,
+      afterSpecRun,
+      beforeSpecRun,
     })
     .then((runs = []) => {
-      results.status = 'finished'
       results.startedTestsAt = getRun(_.first(runs), 'stats.wallClockStartedAt')
       results.endedTestsAt = getRun(_.last(runs), 'stats.wallClockEndedAt')
       results.totalDuration = sumByProp(runs, 'stats.wallClockDuration')
@@ -1289,50 +1253,11 @@ module.exports = {
 
       debug('final results of all runs: %o', results)
 
-      const { each, remapKeys, remove, renameKey, setValue } = objUtils
-
-      // Remap results for module API/after:run to remove private props and
-      // rename props to make more user-friendly
-      const moduleAPIResults = remapKeys(results, {
-        runs: each((run) => ({
-          tests: each((test) => ({
-            attempts: each((attempt, i) => ({
-              timings: remove,
-              failedFromHookId: remove,
-              wallClockDuration: renameKey('duration'),
-              wallClockStartedAt: renameKey('startedAt'),
-              wallClockEndedAt: renameKey('endedAt'),
-              screenshots: setValue(
-                _(run.screenshots)
-                .filter({ testId: test.testId, testAttemptIndex: i })
-                .map((screenshot) => _.omit(screenshot,
-                  ['screenshotId', 'testId', 'testAttemptIndex']))
-                .value(),
-              ),
-            })),
-            testId: remove,
-          })),
-          hooks: each({
-            hookId: remove,
-          }),
-          stats: {
-            wallClockDuration: renameKey('duration'),
-            wallClockStartedAt: renameKey('startedAt'),
-            wallClockEndedAt: renameKey('endedAt'),
-          },
-          screenshots: remove,
-        })),
-      })
-
-      return runEvents.execute('after:run', config, moduleAPIResults)
-      .then(() => {
-        return writeOutput(outputPath, moduleAPIResults)
-      })
-      .return(results)
+      return writeOutput(outputPath, results).return(results)
     })
   },
 
-  runSpec (config, spec = {}, options = {}, estimated) {
+  runSpec (spec = {}, options = {}, estimated) {
     const { project, browser, onError } = options
 
     const { isHeadless } = browser
@@ -1350,25 +1275,22 @@ module.exports = {
 
     const screenshots = []
 
-    return runEvents.execute('before:spec', config, spec)
-    .then(() => {
     // we know we're done running headlessly
     // when the renderer has connected and
     // finishes running all of the tests.
     // we're using an event emitter interface
     // to gracefully handle this in promise land
-      return this.maybeStartVideoRecording({
-        spec,
-        browser,
-        video: options.video,
-        videosFolder: options.videosFolder,
-      })
+
+    return this.maybeStartVideoRecording({
+      spec,
+      browser,
+      video: options.video,
+      videosFolder: options.videosFolder,
     })
     .then((videoRecordProps = {}) => {
       return Promise.props({
         results: this.waitForTestsToFinishRunning({
           spec,
-          config,
           project,
           estimated,
           screenshots,
@@ -1380,6 +1302,7 @@ module.exports = {
           videoCompression: options.videoCompression,
           videoUploadOnPasses: options.videoUploadOnPasses,
           quiet: options.quiet,
+          bail: options.bail,
         }),
 
         connection: this.waitForBrowserToConnect({
@@ -1392,6 +1315,7 @@ module.exports = {
           socketId: options.socketId,
           webSecurity: options.webSecurity,
           projectRoot: options.projectRoot,
+          bail: options.bail,
         }),
       })
     })
@@ -1419,6 +1343,7 @@ module.exports = {
 
     _.defaults(options, {
       isTextTerminal: true,
+      bail: false,
       browser: 'electron',
       quiet: false,
     })
@@ -1435,6 +1360,9 @@ module.exports = {
 
     // alias and coerce to null
     let specPattern = options.spec || null
+
+    // warn if we're using deprecated --ci flag
+    recordMode.warnIfCiFlag(options.ci)
 
     // ensure the project exists
     // and open up the project
@@ -1476,13 +1404,7 @@ module.exports = {
           }
 
           if (!specs.length) {
-            // did we use the spec pattern?
-            if (specPattern) {
-              errors.throw('NO_SPECS_FOUND', projectRoot, specPattern)
-            } else {
-              // else we looked in the integration folder
-              errors.throw('NO_SPECS_FOUND', config.integrationFolder, specPattern)
-            }
+            errors.throw('NO_SPECS_FOUND', config.integrationFolder, specPattern)
           }
 
           if (browser.family === 'chromium') {
@@ -1513,6 +1435,7 @@ module.exports = {
               exit: options.exit,
               headed: options.headed,
               quiet: options.quiet,
+              bail: options.bail,
               outputPath: options.outputPath,
             })
             .tap((runSpecs) => {
@@ -1534,7 +1457,6 @@ module.exports = {
               browser,
               parallel,
               ciBuildId,
-              project,
               projectId,
               projectRoot,
               projectName,

@@ -13,7 +13,7 @@ const nestedObjectsInCurlyBracesRe = /\{(.+?)\}/g
 const nestedArraysInSquareBracketsRe = /\[(.+?)\]/g
 const everythingAfterFirstEqualRe = /=(.*)/
 
-const allowList = 'appPath apiKey browser ci ciBuildId clearLogs config configFile cwd env execPath exit exitWithCode generateKey getKey group headed inspectBrk key logs mode outputPath parallel ping port project proxySource quiet record reporter reporterOptions returnPkg runMode runProject smokeTest spec tag updating version testingType'.split(' ')
+const whitelist = 'appPath apiKey bail browser ci ciBuildId clearLogs config configFile cwd env execPath exit exitWithCode generateKey getKey group headed inspectBrk key logs mode outputPath parallel ping port project proxySource quiet record reporter reporterOptions returnPkg runMode runProject smokeTest spec tag updating version'.split(' ')
 // returns true if the given string has double quote character "
 // only at the last position.
 const hasStrayEndQuote = (s) => {
@@ -92,8 +92,7 @@ const pipesToCommas = (str) => {
 
 const tryJSONParse = (str) => {
   try {
-    // https://github.com/cypress-io/cypress/issues/6891
-    return JSON.parse(str) === Infinity ? null : JSON.parse(str)
+    return JSON.parse(str)
   } catch (err) {
     return null
   }
@@ -125,12 +124,8 @@ const sanitizeAndConvertNestedArgs = (str, argname) => {
   la(is.unemptyString(argname), 'missing config argname to be parsed')
 
   try {
-    if (typeof str === 'object') {
-      return str
-    }
-
-    // if this is valid JSON then just
-    // parse it and call it a day
+  // if this is valid JSON then just
+  // parse it and call it a day
     const parsed = tryJSONParse(str)
 
     if (parsed) {
@@ -186,41 +181,33 @@ module.exports = {
       'run-mode': 'isTextTerminal',
       'run-project': 'runProject',
       'smoke-test': 'smokeTest',
-      'testing-type': 'testingType',
     }
 
     // takes an array of args and converts
     // to an object
     let options = minimist(argv, {
       alias,
-      // never cast the following CLI arguments
-      string: ['ci-build-id'],
     })
 
-    debug('parsed argv options %o', { options })
-
-    const allowed = _.pick(argv, allowList)
+    const whitelisted = _.pick(argv, whitelist)
 
     // were we invoked from the CLI or directly?
     const invokedFromCli = Boolean(options.cwd)
 
     options = _
     .chain(options)
-    .defaults(allowed)
+    .defaults(whitelisted)
     .omit(_.keys(alias)) // remove aliases
     .extend({ invokedFromCli })
     .defaults({
       // set in case we
       // bypassed the cli
       cwd: process.cwd(),
-      testingType: 'e2e',
     })
     .mapValues(coerceUtil)
     .value()
 
     debug('argv parsed: %o', options)
-
-    // throw new Error()
 
     // if we are updating we may have to pluck out the
     // appPath + execPath from the options._ because
@@ -242,34 +229,22 @@ module.exports = {
       project = undefined
     }
 
-    // if non-string key has been passed, set it to undefined
-    // https://github.com/cypress-io/cypress/issues/14571
-    if (typeof options.key !== 'string') {
-      delete options.key
-    }
-
     if (spec) {
       const resolvePath = (p) => {
         return path.resolve(options.cwd, p)
       }
 
-      // https://github.com/cypress-io/cypress/issues/8818
-      // Sometimes spec is parsed to array. Because of that, we need check.
-      if (typeof spec === 'string') {
-        // clean up single quotes wrapping the spec for Windows users
-        // https://github.com/cypress-io/cypress/issues/2298
-        if (spec[0] === '\'' && spec[spec.length - 1] === '\'') {
-          spec = spec.substring(1, spec.length - 1)
-        }
-
-        options.spec = strToArray(spec).map(resolvePath)
-      } else {
-        options.spec = spec.map(resolvePath)
+      // clean up single quotes wrapping the spec for Windows users
+      // https://github.com/cypress-io/cypress/issues/2298
+      if (spec[0] === '\'' && spec[spec.length - 1] === '\'') {
+        spec = spec.substring(1, spec.length - 1)
       }
+
+      options.spec = strToArray(spec).map(resolvePath)
     }
 
     if (tag) {
-      options.tag = typeof tag === 'string' ? strToArray(tag) : tag
+      options.tag = strToArray(tag)
     }
 
     if (env) {
@@ -329,6 +304,10 @@ module.exports = {
       options.outputPath = path.resolve(options.cwd, outputPath)
     }
 
+    if (options.runProject) {
+      options.run = true
+    }
+
     if (options.smokeTest) {
       options.pong = options.ping
     }
@@ -341,11 +320,11 @@ module.exports = {
   toArray (obj = {}) {
     // goes in reverse, takes an object
     // and converts to an array by picking
-    // only the allowed properties and
+    // only the whitelisted properties and
     // mapping them to include the argument
     return _
     .chain(obj)
-    .pick(...allowList)
+    .pick(...whitelist)
     .mapValues((val, key) => {
       return `--${key}=${stringify(val)}`
     }).values()

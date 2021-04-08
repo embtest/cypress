@@ -127,7 +127,7 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
         - chromium
         - edge
         - electron
-        - firefox
+        - firefox (Cypress support in beta)
 
         You can also use a custom browser: https://on.cypress.io/customize-browsers
 
@@ -137,9 +137,9 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
       if (arg1 === 'canary') {
         str += '\n\n'
         str += stripIndent`\
-          Note: In Cypress version 4.0.0, Canary must be launched as \`chrome:canary\`, not \`canary\`.
+          Note: In Cypress 4.0, Canary must be launched as \`chrome:canary\`, not \`canary\`.
 
-          See https://on.cypress.io/migration-guide for more information on breaking changes in 4.0.0.`
+          See https://on.cypress.io/migration-guide for more information on breaking changes in 4.0.`
       }
 
       return str
@@ -159,8 +159,8 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
       return `Timed out waiting for the browser to connect. ${arg1}`
     case 'TESTS_DID_NOT_START_FAILED':
       return 'The browser never connected. Something is wrong. The tests cannot run. Aborting...'
-    case 'DASHBOARD_CANCEL_SKIPPED_SPEC':
-      return '\n  This spec and its tests were skipped because the run has been canceled.'
+    case 'BAILING_FAILED_TEST':
+      return 'Bailing due to failing test and "--bail" flag on CLI.'
     case 'DASHBOARD_API_RESPONSE_FAILED_RETRYING':
       return stripIndent`\
         We encountered an unexpected error talking to our servers.
@@ -177,19 +177,6 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
         We encountered an unexpected error talking to our servers.
 
         Because you passed the --parallel flag, this run cannot proceed because it requires a valid response from our servers.
-
-        ${displayFlags(arg1.flags, {
-          group: '--group',
-          ciBuildId: '--ciBuildId',
-        })}
-
-        The server's response was:
-
-        ${arg1.response}`
-
-    case 'DASHBOARD_CANNOT_PROCEED_IN_SERIAL':
-      return stripIndent`\
-        We encountered an unexpected error talking to our servers.
 
         ${displayFlags(arg1.flags, {
           group: '--group',
@@ -411,6 +398,24 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
           ${chalk.yellow('cypress run --record false')}
 
         https://on.cypress.io/recording-project-runs`
+    case 'CYPRESS_CI_DEPRECATED':
+      return stripIndent`\
+        You are using the deprecated command: ${chalk.yellow('cypress ci <key>')}
+
+        Please switch and use: ${chalk.blue('cypress run --record --key <record_key>')}
+
+        https://on.cypress.io/cypress-ci-deprecated`
+    case 'CYPRESS_CI_DEPRECATED_ENV_VAR':
+      return stripIndent`\
+        1. You are using the deprecated command: ${chalk.yellow('cypress ci')}
+
+            Please switch and use: ${chalk.blue('cypress run --record')}
+
+        2. You are also using the environment variable: ${chalk.yellow('CYPRESS_CI_KEY')}
+
+            Please rename this environment variable to: ${chalk.blue('CYPRESS_RECORD_KEY')}
+
+        https://on.cypress.io/cypress-ci-deprecated`
     case 'DASHBOARD_INVALID_RUN_REQUEST':
       return stripIndent`\
         Recording this run failed because the request was invalid.
@@ -504,7 +509,6 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
         Error writing to: ${chalk.blue(filePath)}
 
         ${chalk.yellow(err)}`
-
     case 'NO_SPECS_FOUND':
       // no glob provided, searched all specs
       if (!arg2) {
@@ -521,11 +525,7 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
 
         We searched for any files matching this glob pattern:
 
-        ${chalk.blue(arg2)}
-
-        Relative to the project root folder:
-
-        ${chalk.blue(arg1)}`
+        ${chalk.blue(arg2)}`
 
     case 'RENDERER_CRASHED':
       return stripIndent`\
@@ -552,7 +552,7 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
       return stripIndent`\
         The support file is missing or invalid.
 
-        Your \`supportFile\` is set to \`${arg1}\`, but either the file is missing or it's invalid. The \`supportFile\` must be a \`.js\`, \`.ts\`, \`.coffee\` file or be supported by your preprocessor plugin (if configured).
+        Your \`supportFile\` is set to \`${arg1}\`, but either the file is missing or it's invalid. The \`supportFile\` must be a \`.js\` or \`.coffee\` file or, if you're using a preprocessor plugin, it must be supported by that plugin.
 
         Correct your \`${arg2}\`, create the appropriate file, or set \`supportFile\` to \`false\` if a support file is not necessary for your project.
 
@@ -563,9 +563,9 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
       msg = stripIndent`\
         The plugins file is missing or invalid.
 
-        Your \`pluginsFile\` is set to \`${arg1}\`, but either the file is missing, it contains a syntax error, or threw an error when required. The \`pluginsFile\` must be a \`.js\`, \`.ts\`, or \`.coffee\` file.
+        Your \`pluginsFile\` is set to \`${arg1}\`, but either the file is missing, it contains a syntax error, or threw an error when required. The \`pluginsFile\` must be a \`.js\` or \`.coffee\` file.
 
-        Or you might have renamed the extension of your \`pluginsFile\`. If that's the case, restart the test runner.
+        Or you might have renamed the extension of your \`pluginsFile\` to \`.ts\`. If that's the case, restart the test runner.
 
         Please fix this, or set \`pluginsFile\` to \`false\` if a plugins file is not necessary for your project.`.trim()
 
@@ -648,9 +648,25 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
         We found an invalid configuration value:
 
         ${chalk.yellow(arg1)}`
+    case 'SCREENSHOT_ON_HEADLESS_FAILURE_REMOVED':
+      return stripIndent`\
+        In Cypress v3.0.0 we removed the configuration option ${chalk.yellow('\`screenshotOnHeadlessFailure\`')}
+
+        You now configure this behavior in your test code.
+
+        Example:
+
+        \`\`\`
+        // cypress/support/index.js
+        Cypress.Screenshot.defaults({
+          screenshotOnRunFailure: false
+        })
+        \`\`\`
+
+        Learn more at https://on.cypress.io/screenshot-api`
     case 'RENAMED_CONFIG_OPTION':
       return stripIndent`\
-        The ${chalk.yellow(arg1)} configuration option you have supplied has been renamed.
+        A configuration option you have supplied has been renamed.
 
         Please rename ${chalk.yellow(arg1)} to ${chalk.blue(arg2)}`
     case 'CANNOT_CONNECT_BASE_URL':
@@ -712,46 +728,44 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
       return `Warning: Multiple attempts to register the following task(s): ${chalk.blue(arg1)}. Only the last attempt will be registered.`
     case 'FREE_PLAN_EXCEEDS_MONTHLY_PRIVATE_TESTS':
       return stripIndent`\
-        You've exceeded the limit of private test results under your free plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of private test recordings under your free plan this month. ${arg1.usedTestsMessage}
 
         To continue recording tests this month you must upgrade your account. Please visit your billing to upgrade to another billing plan.
 
         ${arg1.link}`
     case 'FREE_PLAN_IN_GRACE_PERIOD_EXCEEDS_MONTHLY_PRIVATE_TESTS':
       return stripIndent`\
-        You've exceeded the limit of private test results under your free plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of private test recordings under your free plan this month. ${arg1.usedTestsMessage}
 
         Your plan is now in a grace period, which means your tests will still be recorded until ${arg1.gracePeriodMessage}. Please upgrade your plan to continue recording tests on the Cypress Dashboard in the future.
 
         ${arg1.link}`
     case 'PAID_PLAN_EXCEEDS_MONTHLY_PRIVATE_TESTS':
       return stripIndent`\
-        You've exceeded the limit of private test results under your current billing plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of private test recordings under your current billing plan this month. ${arg1.usedTestsMessage}
 
         To upgrade your account, please visit your billing to upgrade to another billing plan.
 
         ${arg1.link}`
     case 'FREE_PLAN_EXCEEDS_MONTHLY_TESTS':
       return stripIndent`\
-        You've exceeded the limit of test results under your free plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of test recordings under your free plan this month. ${arg1.usedTestsMessage}
 
         To continue recording tests this month you must upgrade your account. Please visit your billing to upgrade to another billing plan.
 
         ${arg1.link}`
     case 'FREE_PLAN_IN_GRACE_PERIOD_EXCEEDS_MONTHLY_TESTS':
       return stripIndent`\
-        You've exceeded the limit of test results under your free plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of test recordings under your free plan this month. ${arg1.usedTestsMessage}
 
-        Your plan is now in a grace period, which means you will have the full benefits of your current plan until ${arg1.gracePeriodMessage}.
-
-        Please visit your billing to upgrade your plan.
+        Your plan is now in a grace period, which means your tests will still be recorded until ${arg1.gracePeriodMessage}. Please upgrade your plan to continue recording tests on the Cypress Dashboard in the future.
 
         ${arg1.link}`
-    case 'PLAN_EXCEEDS_MONTHLY_TESTS':
+    case 'PAID_PLAN_EXCEEDS_MONTHLY_TESTS':
       return stripIndent`\
-        You've exceeded the limit of test results under your ${arg1.planType} billing plan this month. ${arg1.usedTestsMessage}
+        You've exceeded the limit of test recordings under your current billing plan this month. ${arg1.usedTestsMessage}
 
-        To continue getting the full benefits of your current plan, please visit your billing to upgrade.
+        To upgrade your account, please visit your billing to upgrade to another billing plan.
 
         ${arg1.link}`
     case 'FREE_PLAN_IN_GRACE_PERIOD_PARALLEL_FEATURE':
@@ -911,60 +925,6 @@ const getMsgByType = function (type, arg1 = {}, arg2, arg3) {
         Enable write permissions to this directory to ensure screenshots and videos are stored.
 
         If you don't require screenshots or videos to be stored you can safely ignore this warning.`
-    case 'EXPERIMENTAL_SAMESITE_REMOVED':
-      return stripIndent`\
-        The \`experimentalGetCookiesSameSite\` configuration option was removed in Cypress version \`5.0.0\`. Yielding the \`sameSite\` property is now the default behavior of the \`cy.cookie\` commands.
-
-        You can safely remove this option from your config.`
-    case 'EXPERIMENTAL_COMPONENT_TESTING_REMOVED':
-      return stripIndent`\
-        The ${chalk.yellow(`\`experimentalComponentTesting\``)} configuration option was removed in Cypress version \`7.0.0\`. Please remove this flag from \`cypress.json\`.
-
-        Cypress Component Testing is now a standalone command. You can now run your component tests with:
-
-        ${chalk.yellow(`\`cypress open-ct\``)}
-
-        https://on.cypress.io/migration-guide`
-    case 'EXPERIMENTAL_SHADOW_DOM_REMOVED':
-      return stripIndent`\
-        The \`experimentalShadowDomSupport\` configuration option was removed in Cypress version \`5.2.0\`. It is no longer necessary when utilizing the \`includeShadowDom\` option.
-
-        You can safely remove this option from your config.`
-    case 'EXPERIMENTAL_NETWORK_STUBBING_REMOVED':
-      return stripIndent`\
-        The \`experimentalNetworkStubbing\` configuration option was removed in Cypress version \`6.0.0\`.
-        It is no longer necessary for using \`cy.intercept()\` (formerly \`cy.route2()\`).
-
-        You can safely remove this option from your config.`
-    case 'EXPERIMENTAL_RUN_EVENTS_REMOVED':
-      return stripIndent`\
-        The \`experimentalRunEvents\` configuration option was removed in Cypress version \`6.7.0\`. It is no longer necessary when listening to run events in the plugins file.
-
-        You can safely remove this option from your config.`
-    case 'INCOMPATIBLE_PLUGIN_RETRIES':
-      return stripIndent`\
-      We've detected that the incompatible plugin \`cypress-plugin-retries\` is installed at \`${arg1}\`.
-
-      Test retries is now supported in Cypress version \`5.0.0\`.
-
-      Remove the plugin from your dependencies to silence this warning.
-
-      https://on.cypress.io/test-retries
-      `
-    case 'INVALID_CONFIG_OPTION':
-      return stripIndent`\
-        ${arg1.map((arg) => `\`${arg}\` is not a valid configuration option`)}
-
-        https://on.cypress.io/configuration
-        `
-    case 'PLUGINS_RUN_EVENT_ERROR':
-      return stripIndent`\
-        An error was thrown in your plugins file while executing the handler for the '${chalk.blue(arg1)}' event.
-
-        The error we received was:
-
-        ${chalk.yellow(arg2)}
-      `
     default:
   }
 }

@@ -191,11 +191,11 @@ const dequote = (str) => {
 
 const parseOpts = (opts) => {
   opts = _.pick(opts,
+    'bail',
     'browser',
     'cachePath',
     'cacheList',
     'cacheClear',
-    'cachePrune',
     'ciBuildId',
     'config',
     'configFile',
@@ -219,7 +219,6 @@ const parseOpts = (opts) => {
     'reporter',
     'reporterOptions',
     'record',
-    'runProject',
     'spec',
     'tag')
 
@@ -280,7 +279,33 @@ const util = {
     .mapValues((value) => { // stringify to 1 or 0
       return value ? '1' : '0'
     })
+    .extend(util.getNodeOptions(options))
     .value()
+  },
+
+  getNodeOptions (options, nodeVersion) {
+    if (!nodeVersion) {
+      nodeVersion = Number(process.versions.node.split('.')[0])
+    }
+
+    if (options.dev && nodeVersion < 12) {
+      // `node` is used instead of Electron when --dev is passed, so this won't work if Node is too old
+      debug('NODE_OPTIONS=--max-http-header-size could not be set because we\'re in dev mode and Node is < 12.0.0')
+
+      return
+    }
+
+    // https://github.com/cypress-io/cypress/issues/5431
+    const NODE_OPTIONS = `--max-http-header-size=${1024 ** 2} --http-parser=legacy`
+
+    if (_.isString(process.env.NODE_OPTIONS)) {
+      return {
+        NODE_OPTIONS: `${NODE_OPTIONS} ${process.env.NODE_OPTIONS}`,
+        ORIGINAL_NODE_OPTIONS: process.env.NODE_OPTIONS || '',
+      }
+    }
+
+    return { NODE_OPTIONS }
   },
 
   getForceTty () {
@@ -440,23 +465,24 @@ const util = {
   getEnv (varName, trim) {
     la(is.unemptyString(varName), 'expected environment variable name, not', varName)
 
-    const configVarName = `npm_config_${varName}`
-    const packageConfigVarName = `npm_package_config_${varName}`
+    const envVar = process.env[varName]
+    const configVar = process.env[`npm_config_${varName}`]
+    const packageConfigVar = process.env[`npm_package_config_${varName}`]
 
     let result
 
-    if (process.env.hasOwnProperty(varName)) {
+    if (envVar) {
       debug(`Using ${varName} from environment variable`)
 
-      result = process.env[varName]
-    } else if (process.env.hasOwnProperty(configVarName)) {
+      result = envVar
+    } else if (configVar) {
       debug(`Using ${varName} from npm config`)
 
-      result = process.env[configVarName]
-    } else if (process.env.hasOwnProperty(packageConfigVarName)) {
+      result = configVar
+    } else if (packageConfigVar) {
       debug(`Using ${varName} from package.json config`)
 
-      result = process.env[packageConfigVarName]
+      result = packageConfigVar
     }
 
     // environment variables are often set double quotes to escape characters

@@ -62,8 +62,20 @@ const processRunOptions = (options = {}) => {
 
   const args = ['--run-project', options.project]
 
+  if (options.bail) {
+    args.push('--bail')
+  }
+
   if (options.browser) {
     args.push('--browser', options.browser)
+  }
+
+  if (options.ci) {
+    // push to display the deprecation message
+    args.push('--ci')
+
+    // also automatically record
+    args.push('--record', true)
   }
 
   if (options.ciBuildId) {
@@ -105,7 +117,7 @@ const processRunOptions = (options = {}) => {
   // if key is set use that - else attempt to find it by environment variable
   if (options.key == null) {
     debug('--key is not set, looking up environment variable CYPRESS_RECORD_KEY')
-    options.key = util.getEnv('CYPRESS_RECORD_KEY')
+    options.key = util.getEnv('CYPRESS_RECORD_KEY') || util.getEnv('CYPRESS_CI_KEY')
   }
 
   // if we have a key assume we're in record mode
@@ -131,7 +143,7 @@ const processRunOptions = (options = {}) => {
 
   // if record is defined and we're not
   // already in ci mode, then send it up
-  if (options.record != null) {
+  if (options.record != null && !options.ci) {
     args.push('--record', options.record)
   }
 
@@ -161,7 +173,7 @@ module.exports = {
   processRunOptions,
   isValidProject,
   // resolves with the number of failed tests
-  start (options = {}, { isComponentTesting } = { isComponentTesting: false }) {
+  start (options = {}) {
     _.defaults(options, {
       key: null,
       spec: null,
@@ -181,10 +193,6 @@ module.exports = {
         }
 
         throw err
-      }
-
-      if (isComponentTesting) {
-        args.push('--testing-type', 'component')
       }
 
       debug('run to spawn.start args %j', args)

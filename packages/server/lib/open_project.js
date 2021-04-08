@@ -4,7 +4,6 @@ const debug = require('debug')('cypress:server:open_project')
 const Promise = require('bluebird')
 const chokidar = require('chokidar')
 const pluralize = require('pluralize')
-
 const Project = require('./project')
 const browsers = require('./browsers')
 const specsUtil = require('./util/specs')
@@ -73,7 +72,6 @@ const moduleFactory = () => {
           options.proxyServer = cfg.proxyUrl
           options.socketIoRoute = cfg.socketIoRoute
           options.chromeWebSecurity = cfg.chromeWebSecurity
-          options.downloadsFolder = cfg.downloadsFolder
 
           options.url = url
 
@@ -93,6 +91,7 @@ const moduleFactory = () => {
           options.browser = browser
 
           openProject.setCurrentSpecAndBrowser(spec, browser)
+          openProject.setBail(options.bail)
 
           const automation = openProject.getAutomation()
 
@@ -312,7 +311,7 @@ const moduleFactory = () => {
         options.configFile = args.configFile
       }
 
-      options = _.extend({}, args.config, options, { args })
+      options = _.extend({}, args.config, options)
 
       // open the project and return
       // the config for the project instance
