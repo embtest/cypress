@@ -22,7 +22,7 @@ ws.on('connect', () => {
 const driverToReporterEvents = 'paused before:firefox:force:gc after:firefox:force:gc'.split(' ')
 const driverToLocalAndReporterEvents = 'run:start run:end'.split(' ')
 const driverToSocketEvents = 'backend:request automation:request mocha recorder:frame'.split(' ')
-const driverTestEvents = 'test:before:run:async test:after:run'.split(' ')
+const driverTestEvents = 'test:before:run test:before:run:async test:after:run'.split(' ')
 const driverToLocalEvents = 'viewport:changed config stop url:changed page:loading visit:failed'.split(' ')
 const socketRerunEvents = 'runner:restart watched:file:changed'.split(' ')
 const socketToDriverEvents = 'net:event script:error'.split(' ')
@@ -269,12 +269,6 @@ const eventManager = {
             Cypress.runner.setStartTime(state.startTime)
           }
 
-          if (config.isTextTerminal && !state.currentId) {
-            // we are in run mode and it's the first load
-            // store runnables in backend and maybe send to dashboard
-            return ws.emit('set:runnables:and:maybe:record:tests', runnables, run)
-          }
-
           if (state.currentId) {
             // if we have a currentId it means
             // we need to tell the Cypress to skip
@@ -282,7 +276,11 @@ const eventManager = {
             Cypress.runner.resumeAtTest(state.currentId, state.emissions)
           }
 
-          run()
+          if (config.isTextTerminal && !state.currentId) {
+            ws.emit('set:runnables', runnables, run)
+          } else {
+            run()
+          }
         })
       },
     })
@@ -353,6 +351,7 @@ const eventManager = {
     _.each(driverTestEvents, (event) => {
       Cypress.on(event, (test, cb) => {
         reporterBus.emit(event, test, cb)
+        localBus.emit(event, test, cb)
       })
     })
 
@@ -432,10 +431,6 @@ const eventManager = {
 
   on (event, ...args) {
     localBus.on(event, ...args)
-  },
-
-  off (event, ...args) {
-    localBus.off(event, ...args)
   },
 
   notifyRunningSpec (specFile) {

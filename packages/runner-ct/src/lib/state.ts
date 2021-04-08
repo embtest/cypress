@@ -3,15 +3,6 @@ import _ from 'lodash'
 import automation from './automation'
 import { UIPlugin } from '../plugins/UIPlugin'
 import { nanoid } from 'nanoid'
-import {
-  DEFAULT_REPORTER_WIDTH,
-  LEFT_NAV_WIDTH,
-  DEFAULT_LIST_WIDTH,
-  AUT_IFRAME_MARGIN,
-  PLUGIN_BAR_HEIGHT,
-  HEADER_HEIGHT,
-  DEFAULT_PLUGINS_HEIGHT,
-} from '../app/RunnerCt'
 
 export type RunMode = 'single' | 'multi'
 
@@ -25,12 +16,6 @@ interface Defaults {
   height: number
 
   reporterWidth: number | null
-  pluginsHeight: number | null
-  specListWidth: number | null
-  isSpecsListOpen: boolean
-
-  viewportHeight: number
-  viewportWidth: number
 
   url: string
   highlightUrl: boolean
@@ -51,14 +36,7 @@ const _defaults: Defaults = {
   width: 500,
   height: 500,
 
-  viewportHeight: 500,
-  viewportWidth: 500,
-
-  pluginsHeight: PLUGIN_BAR_HEIGHT,
-
   reporterWidth: null,
-  specListWidth: DEFAULT_LIST_WIDTH,
-  isSpecsListOpen: true,
 
   url: '',
   highlightUrl: false,
@@ -100,19 +78,12 @@ export default class State {
   // if null, the default CSS handles it
   // if non-null, the user has set it by resizing
   @observable reporterWidth = _defaults.reporterWidth
-  @observable pluginsHeight = _defaults.pluginsHeight
-  @observable specListWidth = _defaults.specListWidth
-  @observable isSpecsListOpen = _defaults.isSpecsListOpen
-
   // what the dom reports, always in pixels
   @observable absoluteReporterWidth = 0
   @observable headerHeight = 0
 
   @observable windowWidth = 0
   @observable windowHeight = 0
-
-  @observable viewportWidth = _defaults.viewportWidth
-  @observable viewportHeight = _defaults.viewportHeight
 
   @observable automation = automation.CONNECTING
 
@@ -130,56 +101,20 @@ export default class State {
   @observable plugins: UIPlugin[] = []
 
   constructor ({
+    reporterWidth = _defaults.reporterWidth,
     spec = _defaults.spec,
     specs = _defaults.specs,
-    runMode = 'single' as RunMode,
-    multiSpecs = [],
-    reporterWidth = DEFAULT_REPORTER_WIDTH,
-    specListWidth = DEFAULT_LIST_WIDTH,
-    isSpecsListOpen = true,
-  }, config: Cypress.RuntimeConfigOptions) {
+  }) {
     this.reporterWidth = reporterWidth
-    this.isSpecsListOpen = isSpecsListOpen
     this.spec = spec
     this.specs = specs
-    this.specListWidth = specListWidth
-    this.runMode = runMode
-    this.multiSpecs = multiSpecs
-
-    // TODO: Refactor so `config` is only needed in MobX, not passed separately to arbitrary components
-    if (config.isTextTerminal) {
-      this.isSpecsListOpen = false
-    }
 
     // TODO: receive chosen spec from state and set it here
   }
 
   @computed get scale () {
-    // the width of the AUT area can be determined by subtracting the
-    // width of the other parts of the UI from the window.innerWidth
-    // we also need to consider the margin around the aut iframe
-    // window.innerWidth - leftNav - specList - reporter - aut-iframe-margin
-    const autAreaWidth = this.windowWidth
-      - LEFT_NAV_WIDTH
-      - (this.isSpecsListOpen ? this.specListWidth : 0) // if spec list is closed, don't need to consider it.
-      - this.reporterWidth
-      - (AUT_IFRAME_MARGIN.X * 2)
-
-    // same for the height.
-    // height - pluginsHeight (0 if no plugins are open) - plugin-bar-height - header-height - margin
-    const autAreaHeight = this.windowHeight - this.pluginsHeight - PLUGIN_BAR_HEIGHT - HEADER_HEIGHT - (AUT_IFRAME_MARGIN.Y * 2)
-
-    // defensively return scale 1 if either height is negative.
-    // this should not happen in general.
-    if (autAreaWidth < 0 || autAreaHeight < 0) {
-      return 1
-    }
-
-    if (autAreaWidth < this.viewportWidth || autAreaHeight < this.viewportHeight) {
-      return Math.min(
-        autAreaWidth / this.viewportWidth,
-        autAreaHeight / this.viewportHeight,
-      )
+    if (this._containerWidth < this.width || this._containerHeight < this.height) {
+      return Math.min(this._containerWidth / this.width, this._containerHeight / this.height, 1)
     }
 
     return 1
@@ -191,6 +126,10 @@ export default class State {
 
   @computed get _containerHeight () {
     return this.windowHeight - this.headerHeight
+  }
+
+  @computed get marginLeft () {
+    return (this._containerWidth / 2) - (this.width / 2)
   }
 
   @computed get displayScale () {
@@ -218,45 +157,36 @@ export default class State {
     this.screenshotting = screenshotting
   }
 
-  @action updateAutViewportDimensions (dimensions: { viewportWidth: number, viewportHeight: number }) {
-    this.viewportHeight = dimensions.viewportHeight
-    this.viewportWidth = dimensions.viewportWidth
-  }
-
-  @action toggleIsSpecsListOpen () {
-    this.isSpecsListOpen = !this.isSpecsListOpen
-
-    return this.isSpecsListOpen
-  }
-
-  @action setIsSpecsListOpen (open: boolean) {
-    this.isSpecsListOpen = open
-  }
-
   @action setIsLoading (isLoading) {
     this.isLoading = isLoading
   }
 
-  @action updateReporterWidth (width: number) {
-    this.reporterWidth = width
-  }
-
-  @action updatePluginsHeight (height: number) {
-    this.pluginsHeight = height
-  }
-
-  @action updateSpecListWidth (width: number) {
-    this.specListWidth = width
-  }
-
-  @action updateWindowDimensions ({ windowWidth, windowHeight }: { windowWidth?: number, windowHeight?: number }) {
-    if (windowWidth) {
-      this.windowWidth = windowWidth
+  @action updateDimensions (width?: number, height?: number) {
+    if (width) {
+      this.width = width
     }
 
-    if (windowHeight) {
-      this.windowHeight = windowHeight
+    if (height) {
+      this.height = height
     }
+  }
+
+  @action updateWindowDimensions ({
+    windowWidth, windowHeight, reporterWidth, headerHeight,
+  }:
+    {
+      windowWidth: number | null
+      windowHeight: number | null
+      reporterWidth: number | null
+      headerHeight: number | null
+    }) {
+    if (windowWidth != null) this.windowWidth = windowWidth
+
+    if (windowHeight != null) this.windowHeight = windowHeight
+
+    if (reporterWidth != null) this.absoluteReporterWidth = reporterWidth
+
+    if (headerHeight != null) this.headerHeight = headerHeight
   }
 
   @action clearMessage () {
@@ -300,7 +230,7 @@ export default class State {
     }
   }
 
-  @action setSingleSpec (spec: Cypress.Cypress['spec'] | undefined) {
+  @action setSingleSpec (spec) {
     if (this.runMode === 'multi') {
       this.runMode = 'single'
       this.multiSpecs = []
@@ -330,7 +260,7 @@ export default class State {
   }
 
   runMultiMode = async () => {
-    const eventManager = require('./event-manager').default
+    const eventManager = require('./event-manager')
     const waitForRunEnd = () => new Promise((res) => eventManager.on('run:end', res))
 
     this.setSpec(null)
@@ -340,19 +270,28 @@ export default class State {
     }
   }
 
-  loadReactDevTools = () => {
+  loadReactDevTools = (rootElement: HTMLElement) => {
     return import(/* webpackChunkName: "ctChunk-reactdevtools" */ '../plugins/ReactDevtools')
     .then(action((ReactDevTools) => {
       this.plugins = [
-        ReactDevTools.create(),
+        ReactDevTools.create(rootElement),
+      ]
+    }))
+  }
+
+  loadVueDevTools = (rootElement: HTMLElement) => {
+    return import(/* webpackChunkName: "ctChunk-vuedevtools" */ '../plugins/VueDevtools')
+    .then(action((VueDevtools) => {
+      this.plugins = [
+        VueDevtools.create(rootElement),
       ]
     }))
   }
 
   @action
-  initializePlugins = (config: Cypress.RuntimeConfigOptions & Cypress.ResolvedConfigOptions) => {
-    if (config.env.reactDevtools && !config.isTextTerminal) {
-      this.loadReactDevTools()
+  initializePlugins = (config: Cypress.RuntimeConfigOptions, rootElement: HTMLElement) => {
+    if (config.env.reactDevtools) {
+      this.loadReactDevTools(rootElement)
       .then(action(() => {
         this.readyToRunTests = true
       }))
@@ -360,6 +299,16 @@ export default class State {
         this.readyToRunTests = true
         // eslint-disable-next-line
         console.error('Can not load react-devtools.', e)
+      })
+    } else if (config.env.vueDevtools) {
+      this.loadVueDevTools(rootElement)
+      .then(action(() => {
+        this.readyToRunTests = true
+      }))
+      .catch((e) => {
+        this.readyToRunTests = true
+        // eslint-disable-next-line
+        console.error('Can not load vue-devtools.', e)
       })
     } else {
       this.readyToRunTests = true
@@ -370,7 +319,7 @@ export default class State {
   registerDevtools = (contentWindow: Window) => {
     this.plugins.forEach((plugin) => {
       if (plugin.type === 'devtools') {
-        plugin.initialize(contentWindow)
+        plugin.initialize?.(contentWindow)
       }
     })
   }
@@ -381,20 +330,19 @@ export default class State {
   }
 
   @action
-  toggleDevtoolsPlugin = (plugin: UIPlugin, domElement: HTMLElement) => {
+  openDevtoolsPlugin = (plugin: UIPlugin) => {
     if (this.activePlugin === plugin.name) {
-      plugin.unmount()
+      plugin.unmount?.()
       this.setActivePlugin(null)
-      // set this back to default to force the AUT to resize vertically
-      // if the aspect ratio is very long on the Y axis.
-      this.pluginsHeight = PLUGIN_BAR_HEIGHT
     } else {
+      plugin.mount?.()
       this.setActivePlugin(plugin.name)
-      // set this to force the AUT to resize vertically if the aspect ratio is very long
-      // on the Y axis.
-      this.pluginsHeight = DEFAULT_PLUGINS_HEIGHT
-      plugin.mount(domElement)
     }
+  }
+
+  @action
+  toggleDevtoolsPlugin = () => {
+    this.openDevtoolsPlugin(this.plugins[0]) // temporal solution change when will be more than 1 plugin
   }
 
   @computed
@@ -404,6 +352,6 @@ export default class State {
 
   @computed
   get isAnyPluginToShow () {
-    return Boolean(this.plugins.length > 0 && this.spec)
+    return this.plugins.length > 0
   }
 }

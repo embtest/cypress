@@ -5,10 +5,7 @@ import {
   mount as testUtilsMount,
   VueTestUtilsConfigOptions,
   Wrapper,
-  enableAutoDestroy,
 } from '@vue/test-utils'
-
-const ROOT_ID = '__cy_root'
 
 const defaultOptions: (keyof MountOptions)[] = [
   'vue',
@@ -16,6 +13,8 @@ const defaultOptions: (keyof MountOptions)[] = [
   'style',
   'stylesheets',
 ]
+
+Vue.config.devtools = true
 
 const registerGlobalComponents = (Vue, options) => {
   const globalComponents = Cypress._.get(options, 'extensions.components')
@@ -65,7 +64,7 @@ const installMixins = (Vue, options) => {
   }
 }
 
-const hasStore = ({ store }: { store: any }) => Boolean(store && store._vm)
+const hasStore = ({ store }: { store: any }) => store && store._vm // @ts-ignore
 
 const forEachValue = <T>(obj: Record<string, T>, fn: (value: T, key: string) => void) => {
   return Object.keys(obj).forEach((key) => fn(obj[key], key))
@@ -307,21 +306,6 @@ function failTestOnVueError (err, vm, info) {
   window.top.onerror(err)
 }
 
-let initialInnerHtml = ''
-
-Cypress.on('run:start', () => {
-  initialInnerHtml = document.head.innerHTML
-})
-
-function registerAutoDestroy ($destroy: () => void) {
-  Cypress.on('test:before:run', () => {
-    $destroy()
-    document.head.innerHTML = initialInnerHtml
-  })
-}
-
-enableAutoDestroy(registerAutoDestroy)
-
 /**
  * Mounts a Vue component inside Cypress browser.
  * @param {object} component imported from Vue file
@@ -355,6 +339,8 @@ export const mount = (
   .then((win) => {
     const localVue = createLocalVue()
 
+    localVue.config.devtools = true
+
     // @ts-ignore
     win.Vue = localVue
     localVue.config.errorHandler = failTestOnVueError
@@ -374,7 +360,17 @@ export const mount = (
     // @ts-ignore
     const document: Document = cy.state('document')
 
-    let el = document.getElementById(ROOT_ID)
+    document.body.innerHTML = ''
+    let el = document.getElementById('cypress-jsdom')
+
+    // If the target div doesn't exist, create it
+    if (!el) {
+      const div = document.createElement('div')
+
+      div.id = 'cypress-jsdom'
+      document.body.appendChild(div)
+      el = div
+    }
 
     if (typeof options.stylesheets === 'string') {
       options.stylesheets = [options.stylesheets]
@@ -405,9 +401,11 @@ export const mount = (
     // setup Vue instance
     installFilters(localVue, options)
     installMixins(localVue, options)
+    // @ts-ignore
     installPlugins(localVue, options, props)
     registerGlobalComponents(localVue, options)
 
+    // @ts-ignore
     props.attachTo = componentNode
 
     const wrapper = localVue.extend(component as any)

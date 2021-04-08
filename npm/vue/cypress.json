@@ -5,5 +5,9 @@
   "responseTimeout": 2500,
   "projectId": "134ej7",
   "testFiles": "**/*spec.js",
-  "experimentalFetchPolyfill": true
+  "experimentalComponentTesting": true,
+  "experimentalFetchPolyfill": true,
+  "env": {
+    "vueDevtools": true
+  }
 }
