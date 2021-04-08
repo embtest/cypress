@@ -42,6 +42,12 @@ module.exports = (Commands, Cypress, cy, state, config) => {
 
     ({ options: userOptions, position, x, y } = $actionability.getPositionFromArguments(positionOrX, y, userOptions))
 
+    const message = $utils.stringify([
+      position ? `position: ${position}` : undefined,
+      _.isNumber(x) ? `x: ${x}` : undefined,
+      _.isNumber(y) ? `y: ${y}` : undefined,
+    ])
+
     const options = _.defaults({}, userOptions, {
       $el: subject,
       log: true,
@@ -101,7 +107,8 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         deltaOptions = $utils.filterOutOptions(options, defaultOptions)
 
         options._log = Cypress.log({
-          message: deltaOptions,
+          message,
+          options: userOptions,
           $el,
           timeout: options.timeout,
         })
@@ -116,8 +123,9 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         })
       }
 
-      // add this delay delta to the runnables timeout because we delay
-      // by it below before performing each click
+      // we want to add this delay delta to our
+      // runnables timeout so we prevent it from
+      // timing out from multiple clicks
       cy.timeout($actionability.delay, true, eventName)
 
       const createLog = (domEvents, fromElWindow, fromAutWindow) => {
@@ -168,17 +176,11 @@ module.exports = (Commands, Cypress, cy, state, config) => {
         .return(null)
       }
 
-      // if { multiple: true }, make a shallow copy of options, since
-      // properties like `total` and `_retries` are mutated by
-      // $actionability.verify and retrying, but each click should
-      // have its own full timeout
-      const individualOptions = { ... options }
-
       // must use callbacks here instead of .then()
       // because we're issuing the clicks synchronously
       // once we establish the coordinates and the element
       // passes all of the internal checks
-      return $actionability.verify(cy, $el, individualOptions, {
+      return $actionability.verify(cy, $el, options, {
         onScroll ($el, type) {
           return Cypress.action('cy:scrolled', $el, type)
         },

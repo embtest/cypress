@@ -317,24 +317,19 @@ const takeScreenshot = (Cypress, state, screenshotConfig, options = {}) => {
   }
 
   const before = () => {
-    return Promise.try(() => {
-      if (disableTimersAndAnimations) {
-        return cy.pauseTimers(true)
-      }
-    })
-    .then(() => {
-      return sendAsync('before:screenshot', getOptions(true))
-    })
+    if (disableTimersAndAnimations) {
+      cy.pauseTimers(true)
+    }
+
+    return sendAsync('before:screenshot', getOptions(true))
   }
 
   const after = () => {
     send('after:screenshot', getOptions(false))
 
-    return Promise.try(() => {
-      if (disableTimersAndAnimations) {
-        return cy.pauseTimers(false)
-      }
-    })
+    if (disableTimersAndAnimations) {
+      return cy.pauseTimers(false)
+    }
   }
 
   const automationOptions = _.extend({}, options, {
@@ -396,13 +391,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
   Cypress.on('runnable:after:run:async', (test, runnable) => {
     const screenshotConfig = $Screenshot.getConfig()
 
-    if (
-      !test.err
-      || !screenshotConfig.screenshotOnRunFailure
-      || config('isInteractive')
-      || test.err.isPending
-      || !config('screenshotOnRunFailure')
-    ) {
+    if (!test.err || !screenshotConfig.screenshotOnRunFailure || config('isInteractive') || test.err.isPending || !config('screenshotOnRunFailure')) {
       return
     }
 
@@ -429,15 +418,10 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         name = null
       }
 
-      // make sure when we capture the entire test runner
-      // we are not limited to "within" subject
-      // https://github.com/cypress-io/cypress/issues/14253
-      if (options.capture !== 'runner') {
-        const withinSubject = state('withinSubject')
+      const withinSubject = state('withinSubject')
 
-        if (withinSubject && $dom.isElement(withinSubject)) {
-          subject = withinSubject
-        }
+      if (withinSubject && $dom.isElement(withinSubject)) {
+        subject = withinSubject
       }
 
       // TODO: handle hook titles
@@ -472,6 +456,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: name,
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             return consoleProps
           },

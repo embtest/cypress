@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import { getCommonConfig, getSimpleConfig, HtmlWebpackPlugin } from '@packages/web-config/webpack.config.base'
+import getCommonConfig, { HtmlWebpackPlugin } from '@packages/web-config/webpack.config.base'
 import path from 'path'
 import webpack from 'webpack'
 
@@ -13,7 +13,7 @@ const babelLoader = _.find(commonConfig.module.rules, (rule) => {
 
 // @ts-ignore
 babelLoader.use.options.plugins.push([require.resolve('babel-plugin-prismjs'), {
-  'languages': ['javascript', 'coffeescript', 'typescript', 'jsx', 'tsx'],
+  'languages': ['javascript', 'coffeescript', 'typescript', 'jsx', 'tsx', 'json'],
   'plugins': ['line-numbers', 'line-highlight'],
   'theme': 'default',
   'css': false,
@@ -39,7 +39,7 @@ pngRule.use[0].options = {
 }
 
 // @ts-ignore
-const mainConfig: webpack.Configuration = {
+const config: webpack.Configuration = {
   ...commonConfig,
   module: {
     rules: [
@@ -57,17 +57,17 @@ const mainConfig: webpack.Configuration = {
 }
 
 // @ts-ignore
-mainConfig.plugins = [
+config.plugins = [
   // @ts-ignore
-  ...mainConfig.plugins,
+  ...config.plugins,
   new HtmlWebpackPlugin({
     template: path.resolve(__dirname, './static/index.html'),
     inject: false,
   }),
 ]
 
-mainConfig.resolve = {
-  ...mainConfig.resolve,
+config.resolve = {
+  ...config.resolve,
   alias: {
     'bluebird': require.resolve('bluebird'),
     'lodash': require.resolve('lodash'),
@@ -78,17 +78,4 @@ mainConfig.resolve = {
   },
 }
 
-// @ts-ignore
-const injectionConfig: webpack.Configuration = {
-  ...getSimpleConfig(),
-  mode: 'production',
-  entry: {
-    injection: [path.resolve(__dirname, 'injection/index.js')],
-  },
-  output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: '[name].js',
-  },
-}
-
-export default [mainConfig, injectionConfig]
+export default config

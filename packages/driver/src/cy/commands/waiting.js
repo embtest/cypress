@@ -34,6 +34,7 @@ module.exports = (Commands, Cypress, cy, state) => {
     if (options.log !== false) {
       options._log = Cypress.log({
         timeout: ms,
+        options: userOptions,
         consoleProps () {
           return {
             'Waited For': `${ms}ms before continuing`,
@@ -100,16 +101,11 @@ module.exports = (Commands, Cypress, cy, state) => {
       _.keys(cy.state('aliases')).includes(str.slice(1))) {
         specifier = null
       } else {
-        // potentially request, response
+        // potentially request, response or index
         const allParts = _.split(str, '.')
-        const last = _.last(allParts)
 
-        if (last === 'request' || last === 'response') {
-          str = _.join(_.dropRight(allParts, 1), '.')
-          specifier = _.last(allParts)
-        } else {
-          specifier = null
-        }
+        str = _.join(_.dropRight(allParts, 1), '.')
+        specifier = _.last(allParts)
       }
 
       let aliasObj
@@ -162,7 +158,7 @@ module.exports = (Commands, Cypress, cy, state) => {
       }
 
       const isNetworkInterceptCommand = (command) => {
-        const commandsThatCreateNetworkIntercepts = ['route', 'intercept']
+        const commandsThatCreateNetworkIntercepts = ['route', 'route2', 'intercept']
         const commandName = command.get('name')
 
         return commandsThatCreateNetworkIntercepts.includes(commandName)

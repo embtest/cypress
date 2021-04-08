@@ -26,7 +26,7 @@ module.exports = (Commands, Cypress, cy) => {
         const deltaOptions = $utils.filterOutOptions(options)
 
         options._log = Cypress.log({
-          message: deltaOptions,
+          options: userOptions,
           $el: options.$el,
           timeout: options.timeout,
           consoleProps () {
@@ -201,18 +201,6 @@ module.exports = (Commands, Cypress, cy) => {
           // 6. test that option actually receives click event
           // 7. test that select still has focus (i think it already does have a test)
           // 8. test that multiple=true selects receive option event for each selected option
-          const activeElement = $elements.getActiveElByDocument(options.$el)
-
-          if (!options.force && activeElement === null) {
-            const node = $dom.stringify(options.$el)
-            const onFail = options._log
-
-            $errUtils.throwErrByPath('select.disabled', {
-              onFail,
-              args: { node },
-            })
-          }
-
           return Promise
           .resolve(optionEls) // why cant we just pass these directly to .each?
           .each((optEl) => {

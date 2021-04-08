@@ -5,7 +5,7 @@ const $utils = require('../../cypress/utils')
 const $errUtils = require('../../cypress/error_utils')
 const $Location = require('../../cypress/location')
 
-const COOKIE_PROPS = 'name value path secure httpOnly expiry domain sameSite hostOnly'.split(' ')
+const COOKIE_PROPS = 'name value path secure httpOnly expiry domain sameSite'.split(' ')
 
 const commandNameRe = /(:)(\w)/
 
@@ -65,20 +65,6 @@ function cookieValidatesSecurePrefix (options) {
   return options.secure === false
 }
 
-// TODO: do something with the hostOnly property. Right now we dont return it
-// to prevent changes to the API. We will rework cookies in the future.
-function removeHostOnly (cookie) {
-  if (!cookie) return cookie
-
-  if (_.isArray(cookie)) {
-    return cookie.map(removeHostOnly)
-  }
-
-  delete cookie.hostOnly
-
-  return cookie
-}
-
 module.exports = function (Commands, Cypress, cy, state, config) {
   const automateCookies = function (event, obj = {}, log, timeout) {
     const automate = () => {
@@ -123,7 +109,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
 
       return automateCookies('clear:cookies', cookies, log, timeout)
     })
-    .then(removeHostOnly)
   }
 
   const handleBackendError = (command, action, onFail) => {
@@ -157,12 +142,9 @@ module.exports = function (Commands, Cypress, cy, state, config) {
   // TODO: handle failure here somehow
   // maybe by tapping into the Cypress reset
   // stuff, or handling this in the runner itself?
-  // Cypress sessions will clear cookies on its own before each test
-  if (!Cypress.config.experimentalSessionSupport) {
-    Cypress.on('test:before:run:async', () => {
-      return getAndClear()
-    })
-  }
+  Cypress.on('test:before:run:async', () => {
+    return getAndClear()
+  })
 
   return Commands.addAll({
     getCookie (name, options = {}) {
@@ -177,6 +159,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: name,
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             let c
             const obj = {}
@@ -202,7 +185,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       }
 
       return automateCookies('get:cookie', { name }, options._log, options.timeout)
-      .then(removeHostOnly)
       .then((resp) => {
         options.cookie = resp
 
@@ -223,6 +205,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: '',
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             let c
             const obj = {}
@@ -240,7 +223,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       }
 
       return automateCookies('get:cookies', _.pick(options, 'domain'), options._log, options.timeout)
-      .then(removeHostOnly)
       .then((resp) => {
         options.cookies = resp
 
@@ -269,6 +251,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: [name, value],
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             let c
             const obj = {}
@@ -322,7 +305,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       }
 
       return automateCookies('set:cookie', cookie, options._log, options.timeout)
-      .then(removeHostOnly)
       .then((resp) => {
         options.cookie = resp
 
@@ -342,6 +324,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: name,
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             let c
             const obj = {}
@@ -369,7 +352,6 @@ module.exports = function (Commands, Cypress, cy, state, config) {
 
       // TODO: prevent clearing a cypress namespace
       return automateCookies('clear:cookie', { name }, options._log, options.timeout)
-      .then(removeHostOnly)
       .then((resp) => {
         options.cookie = resp
 
@@ -391,6 +373,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         options._log = Cypress.log({
           message: '',
           timeout: options.timeout,
+          options: userOptions,
           consoleProps () {
             let c
             const obj = {}

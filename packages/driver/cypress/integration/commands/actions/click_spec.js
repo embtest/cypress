@@ -752,20 +752,6 @@ describe('src/cy/commands/actions/click', () => {
       })
     })
 
-    it('each click gets a full command timeout', () => {
-      cy.spy(cy, 'retry')
-
-      cy.get('#three-buttons button').click({ multiple: true }).then(() => {
-        const [firstCall, secondCall] = cy.retry.getCalls()
-        const firstCallOptions = firstCall.args[1]
-        const secondCallOptions = secondCall.args[1]
-
-        // ensure we clone the options object passed to `retry()` so that
-        // each click in `{ multiple: true }` gets its own full timeout
-        expect(firstCallOptions !== secondCallOptions, 'Expected click retry options to be different object references between clicks').to.be.true
-      })
-    })
-
     // this test needs to increase the height + width of the div
     // when we implement scrollBy the delta of the left/top
     it('can click elements which are huge and the center is naturally below the fold', () => {
@@ -1621,24 +1607,6 @@ describe('src/cy/commands/actions/click', () => {
           expect(args[2]).to.eq(animationDistanceThreshold)
         })
       })
-
-      describe('scroll-behavior', () => {
-        afterEach(() => {
-          cy.get('html').invoke('css', 'scrollBehavior', 'inherit')
-        })
-
-        // https://github.com/cypress-io/cypress/issues/3200
-        it('can scroll to and click elements in html with scroll-behavior: smooth', () => {
-          cy.get('html').invoke('css', 'scrollBehavior', 'smooth')
-          cy.get('#table tr:first').click()
-        })
-
-        // https://github.com/cypress-io/cypress/issues/3200
-        it('can scroll to and click elements in ancestor element with scroll-behavior: smooth', () => {
-          cy.get('#dom').invoke('css', 'scrollBehavior', 'smooth')
-          cy.get('#table tr:first').click()
-        })
-      })
     })
 
     describe('assertion verification', () => {
@@ -1887,7 +1855,11 @@ describe('src/cy/commands/actions/click', () => {
 
         cy.on('log:changed', (log, attr) => {
           if (log.name === 'click' && attr._emittedAttrs.coords) {
-            const args = attr._emittedAttrs.message.split(', ').map((i) => parseInt(i))
+            const args = attr._emittedAttrs.message.split(', ').map((text) => {
+              const parts = text.split(':')
+
+              return parseInt(parts[1])
+            })
             const coords = attr._emittedAttrs.coords
             const position = Cypress.dom.getElementPositioning($btn).fromAutWindow
 
@@ -2510,7 +2482,7 @@ describe('src/cy/commands/actions/click', () => {
         cy.get('span').invoke('slice', 0, 2).click({ multiple: true, timeout: 1000 }).then(function () {
           const { lastLog } = this
 
-          expect(lastLog.get('message')).to.eq('{multiple: true, timeout: 1000}')
+          expect(lastLog.get('message')).to.eq('')
 
           expect(lastLog.invoke('consoleProps').Options).to.deep.eq({ multiple: true, timeout: 1000 })
         })
@@ -2985,7 +2957,7 @@ describe('src/cy/commands/actions/click', () => {
         .then(function () {
           const { lastLog } = this
 
-          expect(lastLog.get('message')).to.eq('{force: true, timeout: 1000}')
+          expect(lastLog.get('message')).to.eq('')
 
           expect(lastLog.invoke('consoleProps').Options).to.deep.eq({ force: true, timeout: 1000 })
         })

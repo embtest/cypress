@@ -1,6 +1,5 @@
 import _ from 'lodash'
 import cs from 'classnames'
-import Markdown from 'markdown-it'
 import { action, observable } from 'mobx'
 import { observer } from 'mobx-react'
 import React, { Component, MouseEvent } from 'react'
@@ -15,12 +14,10 @@ import runnablesStore, { RunnablesStore } from '../runnables/runnables-store'
 import { Alias, AliasObject } from '../instruments/instrument-model'
 
 import CommandModel from './command-model'
-
-const md = new Markdown()
+import { Message } from './message'
 
 const displayName = (model: CommandModel) => model.displayName || model.name
 const nameClassName = (name: string) => name.replace(/(\s+)/g, '-')
-const formattedMessage = (message: string) => message ? md.renderInline(message) : ''
 const visibleMessage = (model: CommandModel) => {
   if (model.visible) return ''
 
@@ -98,29 +95,11 @@ const Aliases = observer(({ model, aliasesWithDuplicates }: AliasesProps) => {
   )
 })
 
-interface MessageProps {
-  model: CommandModel
-}
-
-const Message = observer(({ model }: MessageProps) => (
-  <span>
-    <i className={`fas fa-circle ${model.renderProps.indicator}`} />
-    <span
-      className='command-message-text'
-      dangerouslySetInnerHTML={{ __html: formattedMessage(model.displayMessage || '') }}
-    />
-  </span>
-))
-
 interface ProgressProps {
   model: CommandModel
 }
 
 const Progress = observer(({ model }: ProgressProps) => {
-  if (!model.timeout || !model.wallClockStartedAt) {
-    return <div className='command-progress'><span /></div>
-  }
-
   const timeElapsed = Date.now() - new Date(model.wallClockStartedAt).getTime()
   const timeRemaining = model.timeout ? model.timeout - timeElapsed : 0
   const percentageRemaining = timeRemaining / model.timeout || 0
@@ -164,7 +143,6 @@ class Command extends Component<Props> {
           `command-state-${model.state}`,
           `command-type-${model.type}`,
           {
-            'command-is-studio': model.isStudio,
             'command-is-event': !!model.event,
             'command-is-invisible': model.visible != null && !model.visible,
             'command-has-num-elements': model.state !== 'pending' && model.numElements != null,
@@ -205,7 +183,6 @@ class Command extends Component<Props> {
                 {model.referencesAlias ? <AliasesReferences model={model} aliasesWithDuplicates={aliasesWithDuplicates} /> : <Message model={model} />}
               </span>
               <span className='command-controls'>
-                <i className='far fa-times-circle studio-command-remove' onClick={this._removeStudioCommand} />
                 <Tooltip placement='top' title={visibleMessage(model)} className='cy-tooltip'>
                   <i className='command-invisible far fa-eye-slash' />
                 </Tooltip>
@@ -264,7 +241,7 @@ class Command extends Component<Props> {
   }
 
   @action _onClick = () => {
-    if (this.props.appState.isRunning || this.props.appState.studioActive) return
+    if (this.props.appState.isRunning) return
 
     const { id } = this.props.model
 
@@ -319,17 +296,6 @@ class Command extends Component<Props> {
         }
       }, 50)
     }
-  }
-
-  _removeStudioCommand = (e: MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    const { model, events } = this.props
-
-    if (!model.isStudio) return
-
-    events.emit('studio:remove:command', model.number)
   }
 }
 

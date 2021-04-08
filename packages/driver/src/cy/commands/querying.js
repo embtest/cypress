@@ -18,7 +18,10 @@ module.exports = (Commands, Cypress, cy, state) => {
       })
 
       if (options.log) {
-        options._log = Cypress.log({ timeout: options.timeout })
+        options._log = Cypress.log({
+          timeout: options.timeout,
+          options: userOptions,
+        })
       }
 
       const log = ($el) => {
@@ -100,6 +103,7 @@ module.exports = (Commands, Cypress, cy, state) => {
         if (options._log == null) {
           options._log = Cypress.log({
             message: selector,
+            options: userOptions,
             referencesAlias: (aliasObj != null && aliasObj.alias) ? { name: aliasObj.alias } : undefined,
             aliasType,
             timeout: options.timeout,
@@ -189,7 +193,7 @@ module.exports = (Commands, Cypress, cy, state) => {
 
         aliasObj = {
           alias,
-          command: state('routes')[request.routeId].command,
+          command: state('routes')[request.routeHandlerId].command,
         }
       }
 
@@ -199,7 +203,7 @@ module.exports = (Commands, Cypress, cy, state) => {
         if (requests.length) {
           aliasObj = {
             alias: toSelect,
-            command: state('routes')[requests[0].routeId].command,
+            command: state('routes')[requests[0].routeHandlerId].command,
           }
         }
       }
@@ -274,7 +278,7 @@ module.exports = (Commands, Cypress, cy, state) => {
             return requests
           }
 
-          if (command.get('name') === 'intercept') {
+          if (['route2', 'intercept'].includes(command.get('name'))) {
             const requests = getAliasedRequests(alias, state)
             // detect alias.all and alias.index
             const specifier = /\.(all|[\d]+)$/.exec(selector)
@@ -415,6 +419,7 @@ module.exports = (Commands, Cypress, cy, state) => {
         options._log = Cypress.log({
           message: '',
           timeout: options.timeout,
+          options: userOptions,
         })
       }
 
@@ -521,6 +526,7 @@ module.exports = (Commands, Cypress, cy, state) => {
 
         options._log = Cypress.log({
           message: _.compact([filter, text]),
+          options: userOptions,
           type: subject ? 'child' : 'parent',
           timeout: options.timeout,
           consoleProps: () => {

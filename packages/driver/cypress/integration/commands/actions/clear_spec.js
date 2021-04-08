@@ -297,24 +297,14 @@ describe('src/cy/commands/actions/type - #clear', () => {
       cy.on('fail', (err) => {
         expect(err.message).to.include('`cy.clear()` failed because it requires a valid clearable element.')
         expect(err.message).to.include('The element cleared was:')
-        expect(err.message).to.include('`<div id="does-not-wrap-input">Text</div>`')
+        expect(err.message).to.include('`<div id="dom">...</div>`')
         expect(err.message).to.include(`A clearable element matches one of the following selectors:`)
         expect(err.docsUrl).to.equal('https://on.cypress.io/clear')
 
         done()
       })
 
-      cy.get('#does-not-wrap-input').clear()
-    })
-
-    it('throws center hidden error if the element is too high', (done) => {
-      cy.on('fail', (err) => {
-        expect(err.message).to.include('`cy.clear()` failed because the center of this element is hidden from view')
-
-        done()
-      })
-
-      cy.get('#dom').clear()
+      cy.get('div').clear()
     })
 
     it('throws on an input radio', (done) => {
@@ -500,11 +490,12 @@ describe('src/cy/commands/actions/type - #clear', () => {
       })
     })
 
-    it('logs deltaOptions', () => {
+    it('logs options', () => {
       cy.get('input:first').clear({ force: true, timeout: 1000 }).then(function () {
         const { lastLog } = this
 
-        expect(lastLog.get('message')).to.eq('{force: true, timeout: 1000}')
+        expect(lastLog.get('message')).to.eq('')
+        expect(lastLog.get('options')).to.deep.eq({ force: true, timeout: 1000 })
 
         expect(lastLog.invoke('consoleProps').Options).to.deep.eq({ force: true, timeout: 1000 })
       })

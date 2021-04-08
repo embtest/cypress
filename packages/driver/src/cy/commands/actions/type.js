@@ -24,7 +24,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       log: true,
       verify: true,
       force: false,
-      delay: config('keystrokeDelay') || 0,
+      delay: 10,
       release: true,
       parseSpecialCharSequences: true,
       waitForAnimations: config('waitForAnimations'),
@@ -84,7 +84,8 @@ module.exports = function (Commands, Cypress, cy, state, config) {
       }
 
       options._log = Cypress.log({
-        message: [chars, deltaOptions],
+        message: chars,
+        options: userOptions,
         $el: options.$el,
         timeout: options.timeout,
         consoleProps () {
@@ -487,7 +488,7 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         const deltaOptions = $utils.filterOutOptions(options)
 
         options._log = Cypress.log({
-          message: deltaOptions,
+          options: userOptions,
           $el,
           timeout: options.timeout,
           consoleProps () {
@@ -500,29 +501,9 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         })
       }
 
-      const callTypeCmd = ($el) => {
-        return cy.now('type', $el, '{selectall}{del}', {
-          $el,
-          log: false,
-          verify: false, // handle verification ourselves
-          _log: options._log,
-          force: options.force,
-          timeout: options.timeout,
-          interval: options.interval,
-          waitForAnimations: options.waitForAnimations,
-          animationDistanceThreshold: options.animationDistanceThreshold,
-          scrollBehavior: options.scrollBehavior,
-        }).then(() => {
-          if (options._log) {
-            options._log.snapshot().end()
-          }
+      const node = $dom.stringify($el)
 
-          return null
-        })
-      }
-
-      const throwError = ($el) => {
-        const node = $dom.stringify($el)
+      if (!$dom.isTextLike($el.get(0))) {
         const word = $utils.plural(subject, 'contains', 'is')
 
         $errUtils.throwErrByPath('clear.invalid_element', {
@@ -531,34 +512,24 @@ module.exports = function (Commands, Cypress, cy, state, config) {
         })
       }
 
-      if (!$dom.isTextLike($el.get(0))) {
-        options.ensure = {
-          position: true,
-          visibility: true,
-          notDisabled: true,
-          notAnimating: true,
-          notCovered: true,
-          notReadonly: true,
+      return cy.now('type', $el, '{selectall}{del}', {
+        $el,
+        log: false,
+        verify: false, // handle verification ourselves
+        _log: options._log,
+        force: options.force,
+        timeout: options.timeout,
+        interval: options.interval,
+        waitForAnimations: options.waitForAnimations,
+        animationDistanceThreshold: options.animationDistanceThreshold,
+        scrollBehavior: options.scrollBehavior,
+      }).then(() => {
+        if (options._log) {
+          options._log.snapshot().end()
         }
 
-        return $actionability.verify(cy, $el, options, {
-          onScroll ($el, type) {
-            return Cypress.action('cy:scrolled', $el, type)
-          },
-
-          onReady ($elToClick) {
-            let activeElement = $elements.getActiveElByDocument($elToClick)
-
-            if (!options.force && activeElement === null || !$dom.isTextLike($elToClick.get(0))) {
-              throwError($el)
-            }
-
-            return callTypeCmd($elToClick)
-          },
-        })
-      }
-
-      return callTypeCmd($el)
+        return null
+      })
     }
 
     return Promise
