@@ -27,7 +27,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -71,13 +70,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "title": "\"before all\" hook for \"test 1\"",
       "hookName": "before all",
       "hookId": "h1",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "hook",
@@ -93,7 +86,9 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "name": "AssertionError",
       "stack": "match.string",
       "sourceMappedStack": "match.string",
-      "parsedStack": "match.array"
+      "parsedStack": "match.array",
+      "actual": null,
+      "showDiff": false
     }
   ],
   [
@@ -105,7 +100,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -117,13 +111,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "before all",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -155,13 +143,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "before all",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -236,7 +218,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -295,13 +276,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "title": "\"before each\" hook for \"test 1\"",
       "hookName": "before each",
       "hookId": "h1",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "hook",
@@ -317,7 +292,9 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "name": "AssertionError",
       "stack": "match.string",
       "sourceMappedStack": "match.string",
-      "parsedStack": "match.array"
+      "parsedStack": "match.array",
+      "actual": null,
+      "showDiff": false
     }
   ],
   [
@@ -328,13 +305,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "before each",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -367,7 +338,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -379,13 +349,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "before each",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -460,7 +424,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -519,13 +482,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "title": "\"after each\" hook for \"test 1\"",
       "hookName": "after each",
       "hookId": "h1",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "hook",
@@ -541,7 +498,9 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "name": "AssertionError",
       "stack": "match.string",
       "sourceMappedStack": "match.string",
-      "parsedStack": "match.array"
+      "parsedStack": "match.array",
+      "actual": null,
+      "showDiff": false
     }
   ],
   [
@@ -552,13 +511,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "after each",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -595,7 +548,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -607,13 +559,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 1,
       "title": "test 1",
       "hookName": "after each",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -692,7 +638,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -861,13 +806,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "title": "\"after all\" hook for \"test 2\"",
       "hookName": "after all",
       "hookId": "h1",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "hook",
@@ -883,7 +822,9 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "name": "AssertionError",
       "stack": "match.string",
       "sourceMappedStack": "match.string",
-      "parsedStack": "match.array"
+      "parsedStack": "match.array",
+      "actual": null,
+      "showDiff": false
     }
   ],
   [
@@ -894,13 +835,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 2,
       "title": "test 2",
       "hookName": "after all",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -937,7 +872,6 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -949,13 +883,7 @@ exports['src/cypress/runner tests finish with correct state hook failures fail i
       "order": 2,
       "title": "test 2",
       "hookName": "after all",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 10}",
       "state": "failed",
       "failedFromHookId": "h1",
       "body": "[body]",
@@ -1029,12 +957,11 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "suite",
     {
-      "id": "r2",
+      "id": "r4",
       "title": "suite 1",
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -1042,7 +969,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before all\" hook",
       "hookName": "before all",
       "hookId": "h1",
@@ -1058,8 +985,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "test:before:run",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "body": "[body]",
       "type": "test",
@@ -1074,7 +1001,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before all\" hook",
       "hookName": "before all",
       "hookId": "h1",
@@ -1091,8 +1018,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "test",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "body": "[body]",
       "type": "test",
@@ -1142,7 +1069,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before each\" hook",
       "hookName": "before each",
       "hookId": "h2",
@@ -1158,7 +1085,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before each\" hook",
       "hookName": "before each",
       "hookId": "h2",
@@ -1175,16 +1102,10 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "fail",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "test",
@@ -1235,14 +1156,16 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
       "name": "AssertionError",
       "stack": "match.string",
       "sourceMappedStack": "match.string",
-      "parsedStack": "match.array"
+      "parsedStack": "match.array",
+      "actual": null,
+      "showDiff": false
     }
   ],
   [
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after each\" hook",
       "hookName": "after each",
       "hookId": "h4",
@@ -1258,7 +1181,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after each\" hook",
       "hookName": "after each",
       "hookId": "h4",
@@ -1275,7 +1198,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after all\" hook",
       "hookName": "after all",
       "hookId": "h3",
@@ -1291,7 +1214,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after all\" hook",
       "hookName": "after all",
       "hookId": "h3",
@@ -1308,16 +1231,10 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "test end",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "test",
@@ -1369,12 +1286,11 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "suite end",
     {
-      "id": "r2",
+      "id": "r4",
       "title": "suite 1",
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -1382,16 +1298,10 @@ exports['src/cypress/runner tests finish with correct state mocha grep fail with
     "mocha",
     "test:after:run",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
-      "err": {
-        "message": "[error message]",
-        "name": "AssertionError",
-        "stack": "match.string",
-        "sourceMappedStack": "match.string",
-        "parsedStack": "match.array"
-      },
+      "err": "{Object 9}",
       "state": "failed",
       "body": "[body]",
       "type": "test",
@@ -1485,12 +1395,11 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "suite",
     {
-      "id": "r2",
+      "id": "r4",
       "title": "suite 1",
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -1498,7 +1407,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before all\" hook",
       "hookName": "before all",
       "hookId": "h1",
@@ -1514,8 +1423,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "test:before:run",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "body": "[body]",
       "type": "test",
@@ -1530,7 +1439,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before all\" hook",
       "hookName": "before all",
       "hookId": "h1",
@@ -1547,8 +1456,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "test",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "body": "[body]",
       "type": "test",
@@ -1598,7 +1507,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before each\" hook",
       "hookName": "before each",
       "hookId": "h2",
@@ -1614,7 +1523,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"before each\" hook",
       "hookName": "before each",
       "hookId": "h2",
@@ -1631,7 +1540,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after each\" hook",
       "hookName": "after each",
       "hookId": "h4",
@@ -1647,7 +1556,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after each\" hook",
       "hookName": "after each",
       "hookId": "h4",
@@ -1664,7 +1573,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after all\" hook",
       "hookName": "after all",
       "hookId": "h3",
@@ -1680,7 +1589,7 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "hook end",
     {
-      "id": "r3",
+      "id": "r5",
       "title": "\"after all\" hook",
       "hookName": "after all",
       "hookId": "h3",
@@ -1697,8 +1606,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "pass",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "state": "passed",
       "body": "[body]",
@@ -1751,8 +1660,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "test end",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "state": "passed",
       "body": "[body]",
@@ -1805,12 +1714,11 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "suite end",
     {
-      "id": "r2",
+      "id": "r4",
       "title": "suite 1",
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -1818,8 +1726,8 @@ exports['src/cypress/runner tests finish with correct state mocha grep pass with
     "mocha",
     "test:after:run",
     {
-      "id": "r3",
-      "order": 1,
+      "id": "r5",
+      "order": 2,
       "title": "test 2",
       "state": "passed",
       "body": "[body]",
@@ -1974,7 +1882,6 @@ exports['src/cypress/runner mocha events simple single test #1'] = [
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -2070,7 +1977,6 @@ exports['src/cypress/runner mocha events simple single test #1'] = [
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -2151,7 +2057,6 @@ exports['src/cypress/runner mocha events simple three tests #1'] = [
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],
@@ -2911,7 +2816,6 @@ exports['src/cypress/runner mocha events simple three tests #1'] = [
       "root": false,
       "type": "suite",
       "file": null,
-      "invocationDetails": "{Object 8}",
       "retries": -1
     }
   ],

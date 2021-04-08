@@ -9,7 +9,6 @@ const $Log = require('./log')
 const $utils = require('./utils')
 const $errUtils = require('./error_utils')
 const $stackUtils = require('./stack_utils')
-const { getResolvedTestConfigOverride } = require('../cy/testConfigOverrides')
 
 const mochaCtxKeysRe = /^(_runnable|test)$/
 const betweenQuotesRe = /\"(.+?)\"/
@@ -19,7 +18,8 @@ const TEST_BEFORE_RUN_EVENT = 'runner:test:before:run'
 const TEST_AFTER_RUN_EVENT = 'runner:test:after:run'
 
 const RUNNABLE_LOGS = 'routes agents commands hooks'.split(' ')
-const RUNNABLE_PROPS = 'cfg muted id order title _titlePath root hookName hookId err state failedFromHookId body speed type duration wallClockStartedAt wallClockDuration timings file originalTitle invocationDetails final currentRetry retries'.split(' ')
+const RUNNABLE_PROPS = 'id order title root hookName hookId err errs state failedFromHookId body speed type duration wallClockStartedAt wallClockDuration timings file originalTitle invocationDetails final currentRetry retries'.split(' ')
+
 const debug = require('debug')('cypress:driver:runner')
 
 const fire = (event, runnable, Cypress) => {
@@ -63,16 +63,7 @@ const testAfterRun = (test, Cypress) => {
   test.clearTimeout()
   if (!fired(TEST_AFTER_RUN_EVENT, test)) {
     setWallClockDuration(test)
-    try {
-      fire(TEST_AFTER_RUN_EVENT, test, Cypress)
-    } catch (e) {
-      // if the test:after:run listener throws it's likely spec code
-      // Since the test status has already been emitted this can't affect the test status.
-      // Let's just log the error to console
-      // TODO: revist when we handle uncaught exceptions/rejections between tests
-      // eslint-disable-next-line no-console
-      console.error(e)
-    }
+    fire(TEST_AFTER_RUN_EVENT, test, Cypress)
 
     // perf loop only through
     // a tests OWN properties and not
@@ -140,7 +131,6 @@ const wrapAll = (runnable) => {
 }
 
 const condenseHooks = (runnable, getHookId) => {
-  runnable._condensedHooks = true
   const hooks = _.compact(_.concat(
     runnable._beforeAll,
     runnable._beforeEach,
@@ -202,35 +192,13 @@ const findTestInSuite = (suite, fn = _.identity) => {
     }
   }
 
-  for (const childSuite of suite.suites) {
-    const test = findTestInSuite(childSuite, fn)
+  for (suite of suite.suites) {
+    const test = findTestInSuite(suite, fn)
 
     if (test) {
       return test
     }
   }
-}
-
-const findSuiteInSuite = (suite, fn = _.identity) => {
-  if (fn(suite)) {
-    return suite
-  }
-
-  for (const childSuite of suite.suites) {
-    const foundSuite = findSuiteInSuite(childSuite, fn)
-
-    if (foundSuite) {
-      return foundSuite
-    }
-  }
-}
-
-const suiteHasTest = (suite, testId) => {
-  return findTestInSuite(suite, (test) => test.id === testId)
-}
-
-const suiteHasSuite = (suite, suiteId) => {
-  return findSuiteInSuite(suite, (s) => s.id === suiteId)
 }
 
 // same as findTestInSuite but iterates backwards
@@ -410,7 +378,7 @@ const overrideRunnerHook = (Cypress, _runner, getTestById, getTest, setTest, get
 
         if (test.final !== false) {
           test.final = true
-          if (test.state === 'passed' && !test.muted) {
+          if (test.state === 'passed') {
             Cypress.action('runner:pass', wrap(test))
           }
 
@@ -453,7 +421,7 @@ const hasOnly = (suite) => {
   )
 }
 
-const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnable, onLogsById, getRunnableId, getHookId, getOnlyTestId, getOnlySuiteId, createEmptyOnlyTest) => {
+const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnable, onLogsById, getTestId, getHookId) => {
   let hasTests = false
 
   // only loop until we find the first test
@@ -471,7 +439,7 @@ const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnab
   // create optimized lookups for the tests without
   // traversing through it multiple times
   const tests = {}
-  const normalizedSuite = normalize(suite, tests, initialTests, onRunnable, onLogsById, getRunnableId, getHookId, getOnlyTestId, getOnlySuiteId, createEmptyOnlyTest)
+  const normalizedSuite = normalize(suite, tests, initialTests, onRunnable, onLogsById, getTestId, getHookId)
 
   if (setTestsById) {
     // use callback here to hand back
@@ -495,11 +463,9 @@ const normalizeAll = (suite, initialTests = {}, setTestsById, setTests, onRunnab
   return normalizedSuite
 }
 
-const normalize = (runnable, tests, initialTests, onRunnable, onLogsById, getRunnableId, getHookId, getOnlyTestId, getOnlySuiteId, createEmptyOnlyTest) => {
+const normalize = (runnable, tests, initialTests, onRunnable, onLogsById, getTestId, getHookId) => {
   const normalizeRunnable = (runnable) => {
-    if (!runnable.id) {
-      runnable.id = getRunnableId()
-    }
+    runnable.id = getTestId()
 
     // tests have a type of 'test' whereas suites do not have a type property
     if (runnable.type == null) {
@@ -545,91 +511,32 @@ const normalize = (runnable, tests, initialTests, onRunnable, onLogsById, getRun
 
     // reduce this runnable down to its props
     // and collections
-    const wrappedRunnable = wrapAll(runnable)
-
-    if (runnable.type === 'test') {
-      const cfg = getResolvedTestConfigOverride(runnable)
-
-      if (_.size(cfg)) {
-        runnable.cfg = cfg
-        wrappedRunnable.cfg = cfg
-      }
-
-      wrappedRunnable._titlePath = runnable.titlePath()
-    }
+    const test = wrapAll(runnable)
 
     if (prevAttempts) {
-      wrappedRunnable.prevAttempts = prevAttempts
+      test.prevAttempts = prevAttempts
     }
 
-    return wrappedRunnable
+    return test
   }
 
   const push = (test) => {
     return tests[test.id] != null ? tests[test.id] : (tests[test.id] = test)
   }
 
-  const onlyIdMode = () => {
-    return !!getOnlyTestId() || !!getOnlySuiteId()
-  }
-
-  const suiteHasOnlyId = (suite) => {
-    return suiteHasTest(suite, getOnlyTestId()) || suiteHasSuite(suite, getOnlySuiteId())
-  }
-
   const normalizedRunnable = normalizeRunnable(runnable)
 
-  if (getOnlySuiteId() && runnable.id === getOnlySuiteId()) {
-    createEmptyOnlyTest(runnable)
-  }
-
   if ((runnable.type !== 'suite') || !hasOnly(runnable)) {
-    if (runnable.type === 'test' && (!getOnlyTestId() || runnable.id === getOnlyTestId())) {
+    if (runnable.type === 'test') {
       push(runnable)
     }
 
-    const runnableTests = runnable.tests
-    const runnableSuites = runnable.suites
-
-    if (onlyIdMode()) {
-      runnable.tests = []
-      runnable._onlyTests = []
-      runnable.suites = []
-      runnable._onlySuites = []
-      runnable._afterAll = []
-      runnable._afterEach = []
-    }
-
     // recursively iterate and normalize all other _runnables
-    _.each({ tests: runnableTests, suites: runnableSuites }, (_runnables, type) => {
+    _.each({ tests: runnable.tests, suites: runnable.suites }, (_runnables, type) => {
       if (runnable[type]) {
-        return normalizedRunnable[type] = _.compact(_.map(_runnables, (childRunnable) => {
-          const normalizedChild = normalize(childRunnable, tests, initialTests, onRunnable, onLogsById, getRunnableId, getHookId, getOnlyTestId, getOnlySuiteId, createEmptyOnlyTest)
-
-          if (type === 'tests' && onlyIdMode()) {
-            if (normalizedChild.id === getOnlyTestId()) {
-              runnable.tests = [childRunnable]
-              runnable._onlyTests = [childRunnable]
-
-              return normalizedChild
-            }
-
-            return null
-          }
-
-          if (type === 'suites' && onlyIdMode()) {
-            if (suiteHasOnlyId(childRunnable)) {
-              runnable.suites = [childRunnable]
-              runnable._onlySuites = [childRunnable]
-
-              return normalizedChild
-            }
-
-            return null
-          }
-
-          return normalizedChild
-        }))
+        return normalizedRunnable[type] = _.map(_runnables, (runnable) => {
+          return normalize(runnable, tests, initialTests, onRunnable, onLogsById, getTestId, getHookId)
+        })
       }
     })
 
@@ -640,75 +547,35 @@ const normalize = (runnable, tests, initialTests, onRunnable, onLogsById, getRun
   // is pretty much the same minus the normalization part
   const filterOnly = (normalizedSuite, suite) => {
     if (suite._onlyTests.length) {
-      const suiteOnlyTests = suite._onlyTests
-
-      if (getOnlyTestId()) {
-        suite.tests = []
-        suite._onlyTests = []
-        suite._afterAll = []
-        suite._afterEach = []
-      } else {
-        suite.tests = suite._onlyTests
-      }
-
-      normalizedSuite.tests = _.compact(_.map(suiteOnlyTests, (test) => {
-        const normalizedTest = normalizeRunnable(test)
-
-        if (getOnlyTestId()) {
-          if (normalizedTest.id === getOnlyTestId()) {
-            suite.tests = [test]
-            suite._onlyTests = [test]
-
-            push(test)
-
-            return normalizedTest
-          }
-
-          return null
-        }
+      suite.tests = suite._onlyTests
+      normalizedSuite.tests = _.map(suite._onlyTests, (test) => {
+        const normalizedTest = normalizeRunnable(test, initialTests, onRunnable, onLogsById, getTestId, getHookId)
 
         push(test)
 
         return normalizedTest
-      }))
+      })
 
       suite.suites = []
       normalizedSuite.suites = []
     } else {
       suite.tests = []
       normalizedSuite.tests = []
-
       _.each(suite._onlySuites, (onlySuite) => {
-        const normalizedOnlySuite = normalizeRunnable(onlySuite)
+        const normalizedOnlySuite = normalizeRunnable(onlySuite, initialTests, onRunnable, onLogsById, getTestId, getHookId)
 
         if (hasOnly(onlySuite)) {
-          filterOnly(normalizedOnlySuite, onlySuite)
+          return filterOnly(normalizedOnlySuite, onlySuite)
         }
       })
 
-      const suiteSuites = suite.suites
+      suite.suites = _.filter(suite.suites, (childSuite) => {
+        const normalizedChildSuite = normalizeRunnable(childSuite, initialTests, onRunnable, onLogsById, getTestId, getHookId)
 
-      suite.suites = []
+        return (suite._onlySuites.indexOf(childSuite) !== -1) || filterOnly(normalizedChildSuite, childSuite)
+      })
 
-      normalizedSuite.suites = _.compact(_.map(suiteSuites, (childSuite) => {
-        const normalizedChildSuite = normalize(childSuite, tests, initialTests, onRunnable, onLogsById, getRunnableId, getHookId, getOnlyTestId, getOnlySuiteId, createEmptyOnlyTest)
-
-        if ((suite._onlySuites.indexOf(childSuite) !== -1) || filterOnly(normalizedChildSuite, childSuite)) {
-          if (onlyIdMode()) {
-            if (suiteHasOnlyId(childSuite)) {
-              suite.suites.push(childSuite)
-
-              return normalizedChildSuite
-            }
-
-            return null
-          }
-
-          suite.suites.push(childSuite)
-
-          return normalizedChildSuite
-        }
-      }))
+      normalizedSuite.suites = _.map(suite.suites, (childSuite) => normalize(childSuite, tests, initialTests, onRunnable, onLogsById, getTestId, getHookId))
     }
 
     return suite.tests.length || suite.suites.length
@@ -738,11 +605,22 @@ const setHookFailureProps = (test, hook, err) => {
   err = $errUtils.wrapErr(err)
   const hookName = getHookName(hook)
 
-  test.err = err
+  // also put failedFromHookId on error instance
+  err.failedFromHookId = hook.hookId
+
+  if (test.err) {
+    err.failedFromHookId = hook.hookId
+
+    test.errs = test.errs || []
+    test.errs = test.errs.concat(err)
+  } else {
+    test.err = err
+    test.failedFromHookId = hook.hookId
+    test.hookName = hookName // TODO: why are we doing this?
+  }
+
   test.state = 'failed'
   test.duration = hook.duration // TODO: nope (?)
-  test.hookName = hookName // TODO: why are we doing this?
-  test.failedFromHookId = hook.hookId
 }
 
 function getTestFromRunnable (runnable) {
@@ -756,7 +634,7 @@ function getTestFromRunnable (runnable) {
   }
 }
 
-const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, setTest, getTestFromHookOrFindTest) => {
+const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, setTest, getHookId, getTestFromHookOrFindTest) => {
   _runner.on('start', () => {
     return Cypress.action('runner:start', {
       start: new Date(),
@@ -816,19 +694,11 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
       delete hook.ctx.currentTest
     }
 
-    let test = getTest()
-
-    // https://github.com/cypress-io/cypress/issues/9162
-    // In https://github.com/cypress-io/cypress/issues/8113, getTest() call was removed to handle skip() properly.
-    // But it caused tests to hang when there's a failure in before().
-    // That's why getTest() is revived and checks if the state is 'pending'.
-    if (!test || test.state === 'pending') {
-      // set the hook's id from the test because
-      // hooks do not have their own id, their
-      // commands need to grouped with the test
-      // and we can only associate them by this id
-      test = getTestFromHookOrFindTest(hook)
-    }
+    // set the hook's id from the test because
+    // hooks do not have their own id, their
+    // commands need to grouped with the test
+    // and we can only associate them by this id
+    const test = getTestFromHookOrFindTest(hook)
 
     if (!test) {
       // we couldn't find a test to run with this hook
@@ -885,7 +755,7 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
      * https://github.com/mochajs/mocha/commit/2a76dd7589e4a1ed14dd2a33ab89f182e4c4a050
      */
   _runner.on('retry', (test, err) => {
-    test.err = $errUtils.wrapErr(err)
+    $errUtils.wrapRunnableErrs(test)
     Cypress.action('runner:retry', wrap(test), test.err)
   })
 
@@ -937,13 +807,6 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
       hookName = getHookName(runnable)
       const test = getTest() || getTestFromHookOrFindTest(runnable)
 
-      if (test.muted) {
-        // we can only mute the failure if it happens inside the test body,
-        // otherwise other tests could be skipped due to hook, and a spec could pass without a failure
-        // AND without having run some tests
-        test.muted = false
-      }
-
       // append a friendly message to the error indicating
       // we're skipping the remaining tests in this suite
       err = $errUtils.appendErrMsg(
@@ -964,9 +827,7 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
       // do not double emit this event
       runnable.alreadyEmittedMocha = true
 
-      if (!runnable.muted) {
-        Cypress.action('runner:fail', wrap(runnable), runnable.err)
-      }
+      Cypress.action('runner:fail', wrap(runnable), runnable.err)
     }
 
     // if we've already fired the test after run event
@@ -987,11 +848,10 @@ const _runnerListeners = (_runner, Cypress, _emissions, getTestById, getTest, se
 }
 
 const create = (specWindow, mocha, Cypress, cy) => {
-  let _runnableId = 0
+  let _id = 0
   let _hookId = 0
   let _uncaughtFn = null
   let _resumedAtTestIndex = null
-  let _testActions = null
 
   const _runner = mocha.getRunner()
 
@@ -1081,15 +941,14 @@ const create = (specWindow, mocha, Cypress, cy) => {
     ended: {},
   }
   let _startTime = null
-  let _onlyTestId = null
-  let _onlySuiteId = null
 
-  const getRunnableId = () => {
-    return `r${++_runnableId}`
+  // increment the id counter
+  const getTestId = () => {
+    return `r${_id += 1}`
   }
 
   const getHookId = () => {
-    return `h${++_hookId}`
+    return `h${_hookId += 1}`
   }
 
   const setTestsById = (tbid) => {
@@ -1130,11 +989,7 @@ const create = (specWindow, mocha, Cypress, cy) => {
     return _testsById[id]
   }
 
-  const isMutedTest = (test) => {
-    return _.some(_testActions, (action) => action.action === 'MUTE' && action.clientId === test.id)
-  }
-
-  const replaceTest = (runnable, id) => {
+  const replaceRunnable = (runnable, id) => {
     const testsQueueIndex = _.findIndex(_testsQueue, { id })
 
     _testsQueue.splice(testsQueueIndex, 1, runnable)
@@ -1147,18 +1002,6 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
     _testsById[id] = runnable
   }
-
-  const setOnlyTestId = (testId) => {
-    _onlyTestId = testId
-  }
-
-  const getOnlyTestId = () => _onlyTestId
-
-  const setOnlySuiteId = (suiteId) => {
-    _onlySuiteId = suiteId
-  }
-
-  const getOnlySuiteId = () => _onlySuiteId
 
   overrideRunnerHook(Cypress, _runner, getTestById, getTest, setTest, getTests)
 
@@ -1174,19 +1017,16 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
     test.prevAttempts = newPrevAttempts
 
-    replaceTest(test, test.id)
+    replaceRunnable(test, test.id)
   }
 
   const maybeHandleRetry = (runnable, err) => {
-    if (!err) return
-
     const r = runnable
     const isHook = r.type === 'hook'
     const isTest = r.type === 'test'
     const test = getTest() || getTestFromHook(runnable, getTestById)
-    const hookName = isHook && getHookName(r)
-    const isBeforeEachHook = isHook && !!hookName.match(/before each/)
-    const isAfterEachHook = isHook && !!hookName.match(/after each/)
+    const isBeforeEachHook = isHook && !!r.hookName.match(/before each/)
+    const isAfterEachHook = isHook && !!r.hookName.match(/after each/)
     const retryAbleRunnable = isTest || isBeforeEachHook || isAfterEachHook
     const willRetry = (test._currentRetry < test._retries) && retryAbleRunnable
 
@@ -1246,25 +1086,8 @@ const create = (specWindow, mocha, Cypress, cy) => {
     return fail()
   }
 
-  const createEmptyOnlyTest = (suite) => {
-    const test = mocha.createTest('New Test', _.noop)
-
-    test.id = getRunnableId()
-
-    suite.addTest(test)
-    suite.appendOnlyTest(test)
-
-    test.invocationDetails = suite.invocationDetails
-
-    setOnlyTestId(test.id)
-
-    return test
-  }
-
   return {
     onScriptError,
-    setOnlyTestId,
-    setOnlySuiteId,
 
     normalizeAll (tests) {
       // if we have an uncaught error then slice out
@@ -1275,8 +1098,6 @@ const create = (specWindow, mocha, Cypress, cy) => {
       if (_uncaughtFn) {
         _runner.suite.suites = []
         _runner.suite.tests = []
-        // prevents .only on suite from hiding uncaught error
-        _runner.suite._onlySuites = []
 
         // create a runnable to associate for the failure
         mocha.createRootTest('An uncaught error was detected outside of a test', _uncaughtFn)
@@ -1289,11 +1110,8 @@ const create = (specWindow, mocha, Cypress, cy) => {
         setTests,
         onRunnable,
         onLogsById,
-        getRunnableId,
+        getTestId,
         getHookId,
-        getOnlyTestId,
-        getOnlySuiteId,
-        createEmptyOnlyTest,
       )
     },
 
@@ -1302,7 +1120,7 @@ const create = (specWindow, mocha, Cypress, cy) => {
         _startTime = moment().toJSON()
       }
 
-      _runnerListeners(_runner, Cypress, _emissions, getTestById, getTest, setTest, getTestFromHookOrFindTest)
+      _runnerListeners(_runner, Cypress, _emissions, getTestById, getTest, setTest, getHookId, getTestFromHookOrFindTest)
 
       return _runner.run((failures) => {
         // if we happen to make it all the way through
@@ -1332,7 +1150,7 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
       // if there's no test, this is likely a rouge before/after hook
       // that should not have run, so skip this runnable
-      if (!test || _runner.stopped) {
+      if (!test) {
         return _next()
       }
 
@@ -1385,18 +1203,12 @@ const create = (specWindow, mocha, Cypress, cy) => {
         const retries = Cypress.getTestRetries() ?? -1
 
         test._retries = retries
-
-        if (isMutedTest(test)) {
-          // mark the test as muted. we use this property to prevent emitting the pass/fail event
-          // to the terminal reporter, and to change how it's displayed in the browser reporter
-          test.muted = true
-        }
       }
 
       const isHook = runnable.type === 'hook'
 
-      const isAfterEachHook = isHook && hookName.match(/after each/)
-      const isBeforeEachHook = isHook && hookName.match(/before each/)
+      const isAfterEachHook = isHook && runnable.hookName.match(/after each/)
+      const isBeforeEachHook = isHook && runnable.hookName.match(/before each/)
 
       // if we've been told to skip hooks at a certain nested level
       // this happens if we're handling a runnable that is going to retry due to failing in a hook
@@ -1464,11 +1276,6 @@ const create = (specWindow, mocha, Cypress, cy) => {
           }
 
           runnable.err = $errUtils.wrapErr(err)
-        } else {
-          // https://github.com/cypress-io/cypress/issues/9209
-          // Mocha reuses runnable object. Because of that, runnable.err isn't undefined even when err is undefined.
-          // It causes Cypress to take superfluous screenshots.
-          delete runnable.err
         }
 
         err = maybeHandleRetry(runnable, err)
@@ -1552,8 +1359,6 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
     countByTestState (tests, state) {
       const count = _.filter(tests, (test, key) => {
-        if (test.muted) return false
-
         return test.state === state
       })
 
@@ -1607,7 +1412,7 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
       // emit the final 'end' event
       // since our reporter depends on this event
-      // and mocha may never fire this because our
+      // and mocha may never fire this becuase our
       // runnable may never finish
       _runner.emit('end')
 
@@ -1652,14 +1457,6 @@ const create = (specWindow, mocha, Cypress, cy) => {
 
     getResumedAtTestIndex () {
       return _resumedAtTestIndex
-    },
-
-    setTestActions (actions) {
-      _testActions = actions
-    },
-
-    getTestActions () {
-      return _testActions
     },
 
     cleanupQueue (numTestsKeptInMemory) {

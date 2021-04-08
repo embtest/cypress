@@ -1,15 +1,10 @@
-// See: ./errorScenarios.md for details about error messages and stack traces
-
 const _ = require('lodash')
 
-const $dom = require('../dom')
+const $errorMessages = require('./error_messages')
 const $utils = require('./utils')
 const $stackUtils = require('./stack_utils')
-const $errorMessages = require('./error_messages')
-const mochaDiffUtils = require('./mocha_diff_utils')
 
-const ERROR_PROPS = 'message type name stack sourceMappedStack parsedStack fileName lineNumber columnNumber host uncaught diff showDiff isPending docsUrl codeFrame'.split(' ')
-const ERR_PREPARED_FOR_SERIALIZATION = Symbol('ERR_PREPARED_FOR_SERIALIZATION')
+const ERROR_PROPS = 'message type name stack sourceMappedStack parsedStack fileName lineNumber columnNumber host uncaught actual expected showDiff isPending docsUrl codeFrame'.split(' ')
 
 if (!Error.captureStackTrace) {
   Error.captureStackTrace = (err, fn) => {
@@ -19,46 +14,20 @@ if (!Error.captureStackTrace) {
   }
 }
 
-const prepareErrorForSerialization = (err) => {
-  if (err[ERR_PREPARED_FOR_SERIALIZATION]) {
-    return err
-  }
-
-  if (err.type === 'existence' || $dom.isDom(err.actual) || $dom.isDom(err.expected)) {
-    err.showDiff = false
-  }
-
-  if (err.showDiff === true) {
-    err.diff = mochaDiffUtils.getAnsiDiff(err)
-
-    // TODO: remove this since we calculate the diff above,
-    // so there's no need to send entire actual/expected objs
-    // if (err.actual) {
-    //   // err.actual = chai.util.inspect(err.actual)
-    //   err.actual = mochaUtils.stringify(err.actual)
-    // }
-
-    // if (err.expected) {
-    //   // err.expected = chai.util.inspect(err.expected)
-    //   err.expected = mochaUtils.stringify(err.expected)
-    // }
-  }
-
-  delete err.actual
-  delete err.expected
-  delete err.showDiff
-
-  err[ERR_PREPARED_FOR_SERIALIZATION] = true
-
-  return err
-}
-
 const wrapErr = (err) => {
   if (!err) return
 
-  prepareErrorForSerialization(err)
-
   return $utils.reduceProps(err, ERROR_PROPS)
+}
+
+const wrapRunnableErrs = (r) => {
+  if (r.err) {
+    r.err = wrapErr(r.err)
+  }
+
+  if (r.errs) {
+    r.errs = r.errs.map((err) => wrapErr(err))
+  }
 }
 
 const isAssertionErr = (err = {}) => {
@@ -228,16 +197,6 @@ class CypressError extends Error {
       Error.captureStackTrace(this, CypressError)
     }
   }
-
-  setUserInvocationStack (stack) {
-    this.userInvocationStack = stack
-
-    return this
-  }
-}
-
-const getUserInvocationStack = (err) => {
-  return err.userInvocationStack
 }
 
 const internalErr = (err) => {
@@ -305,8 +264,7 @@ const errByPath = (msgPath, args) => {
 }
 
 const createUncaughtException = (type, err) => {
-  // FIXME: `fromSpec` is a dirty hack to get uncaught exceptions in `top` to say they're from the spec
-  const errPath = (type === 'spec' || err.fromSpec) ? 'uncaught.fromSpec' : 'uncaught.fromApp'
+  const errPath = type === 'spec' ? 'uncaught.fromSpec' : 'uncaught.fromApp'
   let uncaughtErr = errByPath(errPath, {
     errMsg: err.message,
   })
@@ -390,5 +348,5 @@ module.exports = {
   throwErrByPath,
   warnByPath,
   wrapErr,
-  getUserInvocationStack,
+  wrapRunnableErrs,
 }
