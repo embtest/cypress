@@ -17,9 +17,8 @@ declare namespace Cypress {
     [key: string]: any
   }
   interface Auth {
-    username?: string
-    password?: string
-    bearer?: string
+    username: string
+    password: string
   }
 
   interface Backend {
@@ -405,7 +404,7 @@ declare namespace Cypress {
     Cookies: {
       debug(enabled: boolean, options?: Partial<DebugOptions>): void
       preserveOnce(...names: string[]): void
-      defaults(options: Partial<CookieDefaults>): void
+      defaults(options: Partial<CookieDefaults>): Partial<CookieDefaults>
     }
 
     /**
@@ -1873,7 +1872,7 @@ declare namespace Cypress {
      *  // or use this shortcut
      *  cy.tick(5000).invoke('restore')
      */
-    tick(milliseconds: number, options?: Partial<Loggable>): Chainable<Clock>
+    tick(milliseconds: number): Chainable<Clock>
 
     /**
      * Get the `document.title` property of the page that is currently active.
@@ -2996,14 +2995,13 @@ declare namespace Cypress {
     /**
      * Cypress will automatically apply the right authorization headers
      * if you’re attempting to visit an application that requires
-     * Basic Authentication or a Bearer Token.
+     * Basic Authentication.
      *
      * @example
      *    cy.visit('https://www.acme.com/', {
      *      auth: {
      *        username: 'wile',
-     *        password: 'coyote',
-     *        bearer: "abc123"
+     *        password: 'coyote'
      *      }
      *    })
      */
