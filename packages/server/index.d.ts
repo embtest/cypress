@@ -8,7 +8,7 @@
 
 /// <reference path="../../cli/types/cypress-npm-api.d.ts" />
 
-/// <reference path="../../cli/types/net-stubbing.d.ts" />
+/// <reference path="../../cli/types/net-stubbing.ts" />
 /// <reference path="../../cli/types/cypress.d.ts" />
 /// <reference path="../../cli/types/cypress-global-vars.d.ts" />
 /// <reference path="../../cli/types/cypress-type-helpers.d.ts" />
@@ -33,6 +33,7 @@ export namespace CyServer {
     auth?: {
       username: string
       password: string
+      bearer: string
     }
     domainName: string
     strategy: 'file' | 'http'

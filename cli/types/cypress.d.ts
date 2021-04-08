@@ -17,8 +17,9 @@ declare namespace Cypress {
     [key: string]: any
   }
   interface Auth {
-    username: string
-    password: string
+    username?: string
+    password?: string
+    bearer?: string
   }
 
   interface Backend {
@@ -527,18 +528,6 @@ declare namespace Cypress {
      * @see https://on.cypress.io/catalog-of-events#App-Events
      */
     off: Actions
-
-    /**
-     * Trigger action
-     * @private
-     */
-    action: (action: string, ...args: any[]) => void
-
-    /**
-     * Load  files
-     * @private
-     */
-    onSpecWindow: (window: Window, specList: string[] | Array<() => Promise<void>>) => void
   }
 
   type CanReturnChainable = void | Chainable | Promise<unknown>
@@ -2150,21 +2139,6 @@ declare namespace Cypress {
     ```
      */
     writeFile<C extends FileContents>(filePath: string, contents: C, options?: Partial<WriteFileOptions>): Chainable<C>
-    /**
-     * Write to a file with the specified encoding and contents.
-     *
-     * An `encoding` option in `options` will override the `encoding` argument.
-     *
-     * @see https://on.cypress.io/writefile
-    ```
-    cy.writeFile('path/to/ascii.txt', 'Hello World', 'utf8', {
-      flag: 'a+',
-    }).then((text) => {
-      expect(text).to.equal('Hello World') // true
-    })
-    ```
-     */
-    writeFile<C extends FileContents>(filePath: string, contents: C, encoding: Encodings, options?: Partial<WriteFileOptions>): Chainable<C>
 
     /**
      * jQuery library bound to the AUT
@@ -2635,24 +2609,6 @@ declare namespace Cypress {
      * @default false
      */
     includeShadowDom: boolean
-
-    /**
-     * Override default config options for Component Testing runner.
-     * @default {}
-     */
-    component: ResolvedConfigOptions
-
-    /**
-     * Override default config options for E2E Testing runner.
-     * @default {}
-     */
-    e2e: ResolvedConfigOptions
-
-    /**
-     * Time, in milliseconds, between in each keystroke. (Pass false or 0 to disable)
-     * @default 10
-     */
-     keystrokeDelay: number | false
   }
 
   /**
@@ -2777,10 +2733,6 @@ declare namespace Cypress {
     * Absolute path to the root of the project
     */
     projectRoot: string
-    /**
-     * Type of test and associated runner that was launched.
-     */
-    testingType: 'e2e' | 'component'
     /**
      * Cypress version.
      */
@@ -3044,13 +2996,14 @@ declare namespace Cypress {
     /**
      * Cypress will automatically apply the right authorization headers
      * if you’re attempting to visit an application that requires
-     * Basic Authentication.
+     * Basic Authentication or a Bearer Token.
      *
      * @example
      *    cy.visit('https://www.acme.com/', {
      *      auth: {
      *        username: 'wile',
-     *        password: 'coyote'
+     *        password: 'coyote',
+     *        bearer: "abc123"
      *      }
      *    })
      */
